@@ -1,0 +1,28 @@
+{
+  "name": "tgfood",
+  "version": "1.0.0",
+  "description": "tgbot for food counting",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dolor185/tgFood.git"
+  },
+  "author": "Dolor185",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Dolor185/tgFood/issues"
+  },
+  "homepage": "https://github.com/Dolor185/tgFood#readme",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
