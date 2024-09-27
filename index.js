@@ -3,20 +3,18 @@ const { startServer } = require("./Api/server");
 
 startServer();
 
-// Получение токена
 async function getToken() {
   try {
     const response = await axios.post("http://localhost:3000/get-token");
-    console.log("Access Token:", response.data.access_token);
+
     return response.data.access_token;
   } catch (error) {
     console.error("Error getting token:", error.message);
   }
 }
 
-// Поиск продуктов
 async function searchFood(query) {
-  const token = await getToken(); // Получаем токен
+  const token = await getToken();
   if (token) {
     try {
       const response = await axios.get("http://localhost:3000/food-search", {
@@ -25,12 +23,11 @@ async function searchFood(query) {
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log("Food Search Results:", response.data);
+      console.log("Food Search Results:", response.data.foods.food);
     } catch (error) {
       console.error("Error searching for food:", error.message);
     }
   }
 }
 
-// Пример использования
 searchFood("milk");

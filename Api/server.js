@@ -55,9 +55,12 @@ app.get("/food-search", async (req, res) => {
 
   try {
     const apiResponse = await axios.get(
-      `https://platform.fatsecret.com/rest/foods/search/v3`,
+      `https://platform.fatsecret.com/rest/foods/search/v1`,
       {
-        params: { search_expression: query },
+        params: {
+          search_expression: query,
+          format: "json", // Указываем, что формат ответа должен быть JSON
+        },
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
