@@ -19,12 +19,12 @@ app.post("/get-token", async (req, res) => {
       "https://oauth.fatsecret.com/connect/token",
       qs.stringify({
         grant_type: "client_credentials",
-        scope: "basic",
+        scope: "basic", // Проверьте, что это тот scope, который вам нужен
       }), // Преобразуем параметры для x-www-form-urlencoded
       {
         auth: {
-          username: apiKey,
-          password: apiSecret,
+          username: apiKey, // Ваш API key
+          password: apiSecret, // Ваш API secret
         },
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -32,34 +32,64 @@ app.post("/get-token", async (req, res) => {
       }
     );
 
-    accessToken = tokenResponse.data.access_token; // Сохраняем токен
-    tokenExpiration = Date.now() + tokenResponse.data.expires_in * 1000; // Устанавливаем время истечения
+    // Сохраняем токен и время истечения
+    accessToken = tokenResponse.data.access_token;
+    tokenExpiration = Date.now() + tokenResponse.data.expires_in * 1000;
 
-    res.json(tokenResponse.data);
+    res.json(tokenResponse.data); // Отправляем ответ с данными токена
   } catch (error) {
     console.error(
       "Error getting token:",
       error.response ? error.response.data : error.message
     );
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message }); // Возвращаем ошибку клиенту
   }
 });
 
+const checkAndRefreshToken = async () => {
+  if (!accessToken || Date.now() > tokenExpiration) {
+    try {
+      const tokenResponse = await axios.post(
+        "https://oauth.fatsecret.com/connect/token",
+        qs.stringify({
+          grant_type: "client_credentials",
+          scope: "basic",
+        }),
+        {
+          auth: {
+            username: apiKey,
+            password: apiSecret,
+          },
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      accessToken = tokenResponse.data.access_token;
+      tokenExpiration = Date.now() + tokenResponse.data.expires_in * 1000;
+    } catch (error) {
+      console.error("Error refreshing token:", error.message);
+      throw new Error("Failed to refresh access token");
+    }
+  }
+};
+
+// Поиск продуктов
 app.get("/food-search", async (req, res) => {
   const { query } = req.query;
 
-  // Проверяем, не истек ли токен
-  if (!accessToken || Date.now() > tokenExpiration) {
-    return res.status(401).json({ error: "Access token expired or not set." });
-  }
-
   try {
+    // Проверяем и обновляем токен при необходимости
+    await checkAndRefreshToken();
+
+    // Выполняем запрос к FatSecret API
     const apiResponse = await axios.get(
       `https://platform.fatsecret.com/rest/foods/search/v1`,
       {
         params: {
           search_expression: query,
-          format: "json", // Указываем, что формат ответа должен быть JSON
+          format: "json", // Указываем формат ответа
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -68,7 +98,7 @@ app.get("/food-search", async (req, res) => {
       }
     );
 
-    res.json(apiResponse.data);
+    res.json(apiResponse.data); // Отправляем полученные данные клиенту
   } catch (error) {
     console.error(
       "Error fetching food data:",
