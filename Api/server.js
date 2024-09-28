@@ -19,7 +19,7 @@ app.post("/get-token", async (req, res) => {
       "https://oauth.fatsecret.com/connect/token",
       qs.stringify({
         grant_type: "client_credentials",
-        scope: "basic", // Проверьте, что это тот scope, который вам нужен
+        scope: "premier", // Проверьте, что это тот scope, который вам нужен
       }), // Преобразуем параметры для x-www-form-urlencoded
       {
         auth: {
@@ -53,7 +53,7 @@ const checkAndRefreshToken = async () => {
         "https://oauth.fatsecret.com/connect/token",
         qs.stringify({
           grant_type: "client_credentials",
-          scope: "basic",
+          scope: "premier",
         }),
         {
           auth: {
@@ -86,6 +86,7 @@ app.get("/food-search", async (req, res) => {
     // Выполняем запрос к FatSecret API
     const apiResponse = await axios.get(
       `https://platform.fatsecret.com/rest/foods/search/v1`,
+
       {
         params: {
           search_expression: query,

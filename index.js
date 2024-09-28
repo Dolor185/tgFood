@@ -78,78 +78,35 @@ bot.on("message", async (msg) => {
     return; // Игнорируем команды
   }
 
-  // Если текущий продукт не выбран
-  if (!currentFood) {
-    // Если это запрос на добавление еды
-    if (text && text !== "Отмена") {
-      const foods = await searchFood(text);
+  // Если это запрос на добавление еды
+  if (msg.text && msg.text !== "Отмена") {
+    const foods = await searchFood(text);
 
-      if (foods && foods.length > 0) {
-        const buttons = foods.map((food, index) => {
-          const nutrients = parseNutrients(food.food_description);
-          return {
-            text: `${food.food_description} (КБЖУ: ${nutrients.calories} ккал, ${nutrients.protein} г белков, ${nutrients.fat} г жиров, ${nutrients.carbs} г углеводов)`,
-            callback_data: `${index}:${food.food_description.replace(
-              /:/g,
-              ""
-            )}`, // Удаляем двоеточия
-          };
-        });
-
-        // Отправляем сообщение с найденными продуктами и кнопками
-        const replyMarkup = {
-          inline_keyboard: buttons.map((button) => [
-            {
-              text: button.text,
-              callback_data: button.callback_data.slice(0, 64),
-            }, // Ограничиваем длину до 64 символов
-          ]),
+    if (foods && foods.length > 0) {
+      const buttons = foods.map((food, index) => {
+        const nutrients = parseNutrients(food.food_description);
+        let brand = "";
+        if (food.brand_name) {
+          brand = food.brand_name;
+        }
+        return {
+          text: `${brand} ${food.food_name} (КБЖУ: ${nutrients.calories} ккал, ${nutrients.protein} г белков, ${nutrients.fat} г жиров, ${nutrients.carbs} г углеводов)`,
+          callback_data: `${index}:${food.food_id}`, // Передаем индекс и описание продукта
         };
+      });
 
-        bot.sendMessage(msg.chat.id, "Выберите продукт:", {
-          reply_markup: replyMarkup,
-        });
-      } else {
-        bot.sendMessage(msg.chat.id, `Продукт не найден.`, options);
-      }
-    }
-  } else {
-    // Если текущий продукт уже выбран, обрабатываем ввод веса
-    const weight = parseFloat(text);
+      // Отправляем сообщение с найденными продуктами и кнопками
+      const replyMarkup = {
+        inline_keyboard: buttons.map((button) => [
+          { text: button.text, callback_data: button.callback_data },
+        ]),
+      };
 
-    if (!isNaN(weight) && weight > 0) {
-      const weightFactor = weight / 100; // переводим вес в проценты от 100 грамм
-
-      // Получаем нутриенты для текущего продукта
-      const nutrients = parseNutrients(currentFood.food_description);
-
-      // Добавляем в общий счетчик
-      totalNutrients.calories += nutrients.calories * weightFactor;
-      totalNutrients.protein += nutrients.protein * weightFactor;
-      totalNutrients.fat += nutrients.fat * weightFactor;
-      totalNutrients.carbs += nutrients.carbs * weightFactor;
-
-      // Сохранение данных в MongoDB
-      const nutrientLog = new NutrientLog({ totalNutrients });
-      await nutrientLog.save();
-
-      bot.sendMessage(
-        msg.chat.id,
-        `Ты добавил: ${currentFood.food_description}, ${weight} г\nКБЖУ: ${
-          nutrients.calories * weightFactor
-        } ккал, ${nutrients.protein * weightFactor} г белков, ${
-          nutrients.fat * weightFactor
-        } г жиров, ${nutrients.carbs * weightFactor} г углеводов`,
-        options // Добавляем клавиатуру в ответе
-      );
-
-      currentFood = null; // Сбрасываем текущее состояние
+      bot.sendMessage(msg.chat.id, "Выберите продукт:", {
+        reply_markup: replyMarkup,
+      });
     } else {
-      bot.sendMessage(
-        msg.chat.id,
-        `Пожалуйста, введите корректный вес в граммах.`,
-        options
-      );
+      bot.sendMessage(msg.chat.id, `Продукт не найден.`, options);
     }
   }
 });
@@ -159,20 +116,64 @@ bot.on("callback_query", async (callbackQuery) => {
   const msg = callbackQuery.message;
   const data = callbackQuery.data.split(":");
   const index = parseInt(data[0]);
-  const foodDescription = data.slice(1).join(":"); // Соединяем оставшуюся часть обратно
+  const foodDescription = data[1];
 
   try {
     const foods = await searchFood(foodDescription);
-    if (foods && foods.length > 0 && index < foods.length) {
-      // Проверка на корректность индекса
-      currentFood = foods[index]; // Сохраняем текущий выбранный продукт
-      const nutrients = parseNutrients(currentFood.food_description);
+    if (foods && foods.length > 0) {
+      const food = foods[index];
+      console.log(food);
+      const nutrients = parseNutrients(food.food_description);
 
-      // Попросить ввести вес
+      // Получаем единицы измерения продукта
+      const unit = getUnitFromDescription(food.food_description);
+      let brand = "";
+      if (food.brand_name) {
+        brand = food.brand_name;
+      }
+
+      // Запросить количество в указанных единицах
       bot.sendMessage(
         msg.chat.id,
-        `Введите вес (г) для "${currentFood.food_description}":`
+        `Введите количество в "${unit}" для "${brand} ${food.food_name}\n ${food.food_description}":`
       );
+
+      // Обработка ввода количества
+      bot.once("message", async (weightMsg) => {
+        const quantity = parseFloat(weightMsg.text);
+
+        if (!isNaN(quantity) && quantity > 0) {
+          const conversionFactor = getConversionFactor(unit); // Получаем коэффициент перевода в граммы, если необходимо
+
+          // Добавляем в общий счетчик с учетом единиц измерения
+          const adjustedNutrients = adjustNutrients(
+            nutrients,
+            quantity,
+            conversionFactor
+          );
+
+          totalNutrients.calories += adjustedNutrients.calories;
+          totalNutrients.protein += adjustedNutrients.protein;
+          totalNutrients.fat += adjustedNutrients.fat;
+          totalNutrients.carbs += adjustedNutrients.carbs;
+
+          // Сохранение данных в MongoDB
+          const nutrientLog = new NutrientLog({ totalNutrients });
+          await nutrientLog.save();
+
+          bot.sendMessage(
+            msg.chat.id,
+            `Ты добавил: ${food.food_description}, ${quantity} ${unit}\nКБЖУ: ${adjustedNutrients.calories} ккал, ${adjustedNutrients.protein} г белков, ${adjustedNutrients.fat} г жиров, ${adjustedNutrients.carbs} г углеводов`,
+            options // Добавляем клавиатуру в ответе
+          );
+        } else {
+          bot.sendMessage(
+            msg.chat.id,
+            `Пожалуйста, введите корректное количество.`,
+            options
+          );
+        }
+      });
     }
   } catch (error) {
     bot.sendMessage(msg.chat.id, `Ошибка: ${error.message}`, options);
@@ -236,4 +237,30 @@ const parseNutrients = (description) => {
     carbs: parseFloat(match[3]),
     protein: parseFloat(match[4]),
   };
+};
+
+const adjustNutrients = (nutrients, quantity, conversionFactor) => {
+  const factor = (quantity * conversionFactor) / 100;
+  return {
+    calories: nutrients.calories * factor,
+    protein: nutrients.protein * factor,
+    fat: nutrients.fat * factor,
+    carbs: nutrients.carbs * factor,
+  };
+};
+
+const getConversionFactor = (unit) => {
+  const conversions = {
+    oz: 28.3495,
+    ml: 1, // для жидкостей это 1 мл = 1 г
+    slice: 50, // к примеру, 1 слайс = 50 г, это можно варьировать
+    // добавьте другие единицы по необходимости
+  };
+  return conversions[unit] || 1; // по умолчанию 1, если это граммы
+};
+
+const getUnitFromDescription = (description) => {
+  // Пример: "Per 1 slice - Calories: 100 kcal"
+  const match = description.match(/Per\s+([\d.]+)\s*(\w+)/);
+  return match ? match[2] : "g"; // Если единица не найдена, используем граммы
 };
