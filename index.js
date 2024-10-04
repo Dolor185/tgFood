@@ -4,6 +4,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
 const connectDB = require("./DB/db"); // Импортируйте файл подключения к БД
 const NutrientLog = require("./DB/NutrientLog");
+const CustomProduct = require("./DB/CustomProduct");
 
 startServer();
 connectDB();
@@ -18,6 +19,7 @@ let totalNutrients = {
 let searchedFoods = {};
 let isSelected = false;
 let currentPage = 1;
+let isAddingProduct = false;
 
 // Функция для поиска информации о продукте
 const searchFood = async (query, page = 0) => {
@@ -42,7 +44,8 @@ const options = {
   reply_markup: {
     keyboard: [
       ["/NewProduct🥕", "/Total🔎"], // Кнопки
-      ["/Reset💽", "/Help🆘"], // Кнопка сброса и дополнительная кнопка
+      ["/Reset💽", "/Help🆘"],
+      ["/favourites", "/addFavourite"], // Кнопка сброса и дополнительная кнопка
     ],
     resize_keyboard: true, // Автоматический размер клавиатуры
     one_time_keyboard: true, // Скрывать клавиатуру после нажатия
@@ -76,15 +79,14 @@ bot.onText(/\/NewProduct🥕/, (msg) => {
 bot.on("message", async (msg) => {
   const text = msg.text;
 
-  if (text.startsWith("/")) return; // Игнорируем команды
+  if (text.startsWith("/") || isAddingProduct) return;
   if (isSelected) return;
 
   if (msg.text && msg.text !== "Отмена") {
     // Сохраняем запрос для поиска продуктов
     userSearchQueries[msg.chat.id] = text;
 
-    const buttons = await getProducts(text, currentPage);
-    console.log(searchedFoods);
+    const buttons = await getProducts(text, currentPage, msg.chat.id);
 
     if (buttons && buttons.length > 0) {
       const replyMarkup = {
@@ -125,11 +127,12 @@ bot.on("callback_query", async (callbackQuery) => {
     // Если action — это число, то это food_id выбранного продукта
     const foodId = action; // Получаем food_id из callback_data
     isSelected = true;
-    const foods = searchedFoods[msg.chat.id]; // Получаем сохранённые продукты по chatId
-
+    const foods = searchedFoods[msg.chat.id] || []; // Получаем сохранённые продукты по chatId
+    console.log(searchedFoods);
     // Найти выбранный продукт
+    console.log("Selected foodId:", foodId);
     const selectedFood = foods.find((food) => food.food_id === foodId);
-
+    console.log("Selected food:", selectedFood);
     if (selectedFood) {
       const nutrients = parseNutrients(selectedFood.food_description);
       const { amount, unit } = getUnitAndAmountFromDescription(
@@ -276,6 +279,102 @@ bot.onText(/\/Reset💽/, (msg) => {
   bot.sendMessage(msg.chat.id, "Дневной счетчик сброшен.", options);
 });
 
+bot.onText(/\/addFavourite/, (msg) => {
+  isAddingProduct = true;
+  bot.sendMessage(msg.chat.id, "Введите имя продукта:");
+
+  bot.once("message", async (nameMsg) => {
+    const productName = nameMsg.text;
+
+    bot.sendMessage(nameMsg.chat.id, "Введите количество калорий (ккал):");
+
+    bot.once("message", async (caloriesMsg) => {
+      const calories = parseFloat(caloriesMsg.text);
+
+      bot.sendMessage(caloriesMsg.chat.id, "Введите количество белков (г):");
+
+      bot.once("message", async (proteinMsg) => {
+        const protein = parseFloat(proteinMsg.text);
+
+        bot.sendMessage(proteinMsg.chat.id, "Введите количество жиров (г):");
+
+        bot.once("message", async (fatMsg) => {
+          const fat = parseFloat(fatMsg.text);
+
+          bot.sendMessage(fatMsg.chat.id, "Введите количество углеводов (г):");
+
+          bot.once("message", async (carbsMsg) => {
+            const carbs = parseFloat(carbsMsg.text);
+
+            // Сохранение продукта в базе данных
+            const customProduct = new CustomProduct({
+              name: productName,
+              calories,
+              protein,
+              fat,
+              carbs,
+            });
+            await customProduct.save();
+            isAddingProduct = false;
+            bot.sendMessage(
+              carbsMsg.chat.id,
+              "Продукт успешно добавлен в избранные."
+            );
+          });
+        });
+      });
+    });
+  });
+});
+
+bot.onText(/\/favourites/, async (msg) => {
+  const favourites = await CustomProduct.find();
+
+  if (favourites.length === 0) {
+    bot.sendMessage(msg.chat.id, "У вас нет сохраненных продуктов.");
+  } else {
+    const buttons = favourites.map((product) => ({
+      text: `${product.name} (КБЖУ: ${product.calories} ккал, ${product.protein} г белков, ${product.fat} г жиров, ${product.carbs} г углеводов)`,
+      callback_data: `fav_${product._id}`,
+    }));
+
+    const replyMarkup = {
+      inline_keyboard: buttons.map((button) => [button]),
+    };
+
+    bot.sendMessage(msg.chat.id, "Ваши избранные продукты:", {
+      reply_markup: replyMarkup,
+    });
+  }
+});
+
+bot.on("callback_query", async (callbackQuery) => {
+  const msg = callbackQuery.message;
+  const action = callbackQuery.data;
+
+  if (action.startsWith("fav_")) {
+    const productId = action.split("_")[1];
+    const product = await CustomProduct.findById(productId);
+
+    if (product) {
+      totalNutrients.calories += product.calories;
+      totalNutrients.protein += product.protein;
+      totalNutrients.fat += product.fat;
+      totalNutrients.carbs += product.carbs;
+
+      bot.sendMessage(
+        msg.chat.id,
+        `Ты добавил: ${product.name}\nКБЖУ: ${product.calories} ккал, ${product.protein} г белков, ${product.fat} г жиров, ${product.carbs} г углеводов`
+      );
+
+      // Сохранение данных в MongoDB
+      const nutrientLog = new NutrientLog({ totalNutrients });
+      await nutrientLog.save();
+    } else {
+      bot.sendMessage(msg.chat.id, "Продукт не найден.");
+    }
+  }
+});
 // Парсер нутриентов из описания
 const parseNutrients = (description) => {
   const match = description.match(
