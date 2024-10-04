@@ -77,7 +77,7 @@ const checkAndRefreshToken = async () => {
 
 // Поиск продуктов
 app.get("/food-search", async (req, res) => {
-  const { query } = req.query;
+  const { query, page } = req.query;
 
   try {
     // Проверяем и обновляем токен при необходимости
@@ -89,6 +89,8 @@ app.get("/food-search", async (req, res) => {
 
       {
         params: {
+          max_results: 10,
+          page_number: page,
           search_expression: query,
           format: "json", // Указываем формат ответа
         },
