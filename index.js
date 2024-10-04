@@ -80,10 +80,13 @@ bot.on("message", async (msg) => {
   if (isSelected) return;
 
   if (msg.text && msg.text !== "Отмена") {
-    // Если это запрос на добавление еды
-    const buttons = await getProducts(text, currentPage, msg.chat.id);
+    // Сохраняем запрос для поиска продуктов
+    userSearchQueries[msg.chat.id] = text;
+
+    const buttons = await getProducts(text, currentPage);
     console.log(searchedFoods);
-    if (buttons.length > 0) {
+
+    if (buttons && buttons.length > 0) {
       const replyMarkup = {
         inline_keyboard: [
           ...buttons.map((button) => [
@@ -105,7 +108,6 @@ bot.on("message", async (msg) => {
     }
   }
 });
-
 // Добавляем объект для хранения текущего запроса на каждого пользователя
 let userSearchQueries = {};
 
@@ -231,42 +233,6 @@ bot.on("callback_query", async (callbackQuery) => {
   }
 });
 
-// Обработка текстовых сообщений для поиска продуктов
-bot.on("message", async (msg) => {
-  const text = msg.text;
-
-  if (text.startsWith("/")) return; // Игнорируем команды
-  if (isSelected) return;
-
-  if (msg.text && msg.text !== "Отмена") {
-    // Сохраняем запрос для поиска продуктов
-    userSearchQueries[msg.chat.id] = text;
-
-    const buttons = await getProducts(text, currentPage);
-    console.log(searchedFoods);
-
-    if (buttons.length > 0) {
-      const replyMarkup = {
-        inline_keyboard: [
-          ...buttons.map((button) => [
-            { text: button.text, callback_data: button.callback_data },
-          ]),
-          // Добавляем кнопки для навигации
-          [
-            { text: "Предыдущая страница", callback_data: "previous_page" },
-            { text: "Следующая страница", callback_data: "next_page" },
-          ],
-        ],
-      };
-
-      bot.sendMessage(msg.chat.id, "Выберите продукт:", {
-        reply_markup: replyMarkup,
-      });
-    } else {
-      bot.sendMessage(msg.chat.id, `Продукт не найден.`, options);
-    }
-  }
-});
 // Обработка нажатия на кнопку /dayTotal
 bot.onText(/\/Total🔎/, async (msg) => {
   try {
