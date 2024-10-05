@@ -10,12 +10,6 @@ startServer();
 connectDB();
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 
-let totalNutrients = {
-  calories: 0,
-  protein: 0,
-  fat: 0,
-  carbs: 0,
-};
 let searchedFoods = {};
 let isSelected = false;
 let currentPage = 1;
@@ -158,14 +152,23 @@ bot.on("callback_query", async (callbackQuery) => {
             amount
           );
 
-          totalNutrients.calories += adjustedNutrients.calories;
-          totalNutrients.protein += adjustedNutrients.protein;
-          totalNutrients.fat += adjustedNutrients.fat;
-          totalNutrients.carbs += adjustedNutrients.carbs;
+          const userId = msg.chat.id; // Получаем Telegram user id
 
-          // Сохранение данных в MongoDB
-          const nutrientLog = new NutrientLog({ totalNutrients });
-          await nutrientLog.save();
+          // Найти запись пользователя и обновить её, если она существует, либо создать новую
+          await NutrientLog.findOneAndUpdate(
+            { userId }, // Поиск по userId
+            {
+              $inc: {
+                // Увеличиваем значения полей нутриентов
+                "totalNutrients.calories": adjustedNutrients.calories,
+                "totalNutrients.protein": adjustedNutrients.protein,
+                "totalNutrients.fat": adjustedNutrients.fat,
+                "totalNutrients.carbs": adjustedNutrients.carbs,
+              },
+            },
+            { upsert: true, new: true } // Создать новую запись, если она не найдена
+          );
+
           isSelected = false;
 
           // Отправляем сообщение с добавленными нутриентами
@@ -239,13 +242,15 @@ bot.on("callback_query", async (callbackQuery) => {
 // Обработка нажатия на кнопку /dayTotal
 bot.onText(/\/Total🔎/, async (msg) => {
   try {
-    const logs = await NutrientLog.find().sort({ date: -1 }).limit(1); // Получите последний лог
+    const userId = msg.chat.id; // Используем chat.id как уникальный идентификатор пользователя
+    const logs = await NutrientLog.find({ userId }).sort({ date: -1 }).limit(1); // Поиск логов по userId
+
     if (logs.length > 0) {
       const { totalNutrients } = logs[0];
       bot.sendMessage(
         msg.chat.id,
-        `Дневной счетчик:\n Калории: ${totalNutrients.calories} ккал\n Белки: ${totalNutrients.protein}г \n Жиры: ${totalNutrients.fat}г \n Углеводы: ${totalNutrients.carbs}г`,
-        options // Добавляем клавиатуру в ответе
+        `Ваш дневной счетчик:\n Калории: ${totalNutrients.calories} ккал\n Белки: ${totalNutrients.protein}г\n Жиры: ${totalNutrients.fat}г\n Углеводы: ${totalNutrients.carbs}г`,
+        options // клавиатура
       );
     } else {
       bot.sendMessage(
@@ -258,25 +263,36 @@ bot.onText(/\/Total🔎/, async (msg) => {
     bot.sendMessage(
       msg.chat.id,
       `Ошибка при получении данных: ${error.message}`,
-      options // Добавляем клавиатуру в ответе
+      options
     );
   }
 });
 
 // Обработка нажатия на кнопку /reset
-bot.onText(/\/Reset💽/, (msg) => {
-  totalNutrients = {
-    calories: 0,
-    protein: 0,
-    fat: 0,
-    carbs: 0,
-  };
+bot.onText(/\/Reset💽/, async (msg) => {
+  try {
+    const userId = msg.chat.id;
+    // Сбрасываем данные по текущему пользователю
+    await NutrientLog.updateMany(
+      { userId },
+      {
+        $set: {
+          "totalNutrients.calories": 0,
+          "totalNutrients.protein": 0,
+          "totalNutrients.fat": 0,
+          "totalNutrients.carbs": 0,
+        },
+      }
+    );
 
-  // Сохранение нового лог-файла с нулями
-  const nutrientLog = new NutrientLog({ totalNutrients });
-  nutrientLog.save(); // Не дожидаемся завершения, просто сохраняем
-
-  bot.sendMessage(msg.chat.id, "Дневной счетчик сброшен.", options);
+    bot.sendMessage(msg.chat.id, "Ваш дневной счетчик был сброшен.", options);
+  } catch (error) {
+    bot.sendMessage(
+      msg.chat.id,
+      `Ошибка при сбросе данных: ${error.message}`,
+      options
+    );
+  }
 });
 
 bot.onText(/\/addFavourite/, (msg) => {
