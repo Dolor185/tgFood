@@ -113,7 +113,7 @@ bot.on("callback_query", async (callbackQuery) => {
   const action = callbackQuery.data; // Получаем action от кнопок (например, next_page, previous_page или food_id)
 
   // Если пользователь нажал на "Следующая страница" или "Предыдущая страница"
-  if (action.startsWith("fav_") || action.startsWith("rem_")) {
+  if (action.startsWith("fav_") || action.startsWith("rem")) {
     return;
   }
   if (action === "next_page") {
@@ -494,20 +494,24 @@ bot.onText(/\/removeFavourite/, async (msg) => {
 bot.on("callback_query", async (callbackQuery) => {
   const msg = callbackQuery.message;
   const action = callbackQuery.data;
+
   if (action.startsWith("rem_")) {
+    // Получаем ID продукта для удаления
     const productId = action.split("_")[1];
     const product = await CustomProduct.findById(productId);
+
     if (product) {
-      isSelected = true;
+      // Генерируем инлайн-клавиатуру для подтверждения удаления
       const replyMarkup = {
         inline_keyboard: [
           [
-            { text: "Yes", callback_data: "remY" },
-            { text: "No", callback_data: "remN" },
+            { text: "Yes", callback_data: `remY_${productId}` },
+            { text: "No", callback_data: `remN_${productId}` },
           ],
         ],
       };
 
+      // Спрашиваем пользователя, точно ли он хочет удалить продукт
       bot.sendMessage(
         msg.chat.id,
         `Вы действительно хотите удалить продукт ${product.name}?`,
@@ -516,14 +520,22 @@ bot.on("callback_query", async (callbackQuery) => {
         }
       );
     }
-    bot.on("callback_query", (callbackQuery) => {
-      const msg = callbackQuery.message;
-      const action = callbackQuery.action;
+  } else if (action.startsWith("remY_")) {
+    const productId = action.split("_")[1];
 
-      if (action.startsWith("remN")) {
-        bot.sendMessage(msg.chat.id, `Удаление отменено`);
-      }
-    });
+    try {
+      // Удаляем продукт из базы данных
+      await CustomProduct.deleteOne({ _id: productId });
+
+      // Отправляем сообщение об успешном удалении
+      bot.sendMessage(msg.chat.id, "Продукт успешно удалён из избранного.");
+    } catch (error) {
+      bot.sendMessage(msg.chat.id, "Произошла ошибка при удалении продукта.");
+      console.error(error);
+    }
+  } else if (action.startsWith("remN_")) {
+    // Если пользователь отменил удаление
+    bot.sendMessage(msg.chat.id, "Удаление отменено.");
   }
 });
 // Парсер нутриентов из описания
