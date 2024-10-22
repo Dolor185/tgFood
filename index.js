@@ -39,7 +39,7 @@ const options = {
     keyboard: [
       ["/NewProduct🥕", "/Total🔎"], // Кнопки
       ["/Reset💽", "/Help🆘"],
-      ["/favourites", "/addFavourite"], // Кнопка сброса и дополнительная кнопка
+      ["/Customs", "/addCustome", "/removeCustome"], // Кнопка сброса и дополнительная кнопка
     ],
     resize_keyboard: true, // Автоматический размер клавиатуры
     one_time_keyboard: true, // Скрывать клавиатуру после нажатия
@@ -64,7 +64,7 @@ bot.onText(/\/start/, (msg) => {
 bot.onText(/\/NewProduct🥕/, (msg) => {
   bot.sendMessage(
     msg.chat.id,
-    `Отправь мне название продукта для поиска:`,
+    `Отправь мне название продукта для поиска, так как я использую базу данных продуктов США, запрос должен быть на английском:`,
     options // Добавляем клавиатуру в ответе
   );
 });
@@ -113,7 +113,7 @@ bot.on("callback_query", async (callbackQuery) => {
   const action = callbackQuery.data; // Получаем action от кнопок (например, next_page, previous_page или food_id)
 
   // Если пользователь нажал на "Следующая страница" или "Предыдущая страница"
-  if (action.startsWith("fav_") || action.startsWith("rem")) {
+  if (action.startsWith("cus_") || action.startsWith("rem")) {
     return;
   }
   if (action === "next_page") {
@@ -126,9 +126,9 @@ bot.on("callback_query", async (callbackQuery) => {
     isSelected = true;
     const foods = searchedFoods[msg.chat.id] || []; // Получаем сохранённые продукты по chatId
     // Найти выбранный продукт
-    console.log("Selected foodId:", foodId);
+
     const selectedFood = foods.find((food) => food.food_id === foodId);
-    console.log("Selected food:", selectedFood);
+
     if (selectedFood) {
       const nutrients = parseNutrients(selectedFood.food_description);
       const { amount, unit } = getUnitAndAmountFromDescription(
@@ -297,9 +297,9 @@ bot.onText(/\/Reset💽/, async (msg) => {
   }
 });
 
-bot.onText(/\/addFavourite/, (msg) => {
+bot.onText(/\/addCustome/, (msg) => {
   const chatId = msg.chat.id;
-
+  isAddingProduct = true;
   bot.sendMessage(chatId, "Введите название продукта:");
 
   // Ожидаем название продукта
@@ -367,12 +367,13 @@ bot.onText(/\/addFavourite/, (msg) => {
               fat,
               carbs,
             });
-
+            isAddingProduct = false;
             try {
               await newProduct.save();
               bot.sendMessage(
                 chatId,
-                `Продукт "${productName}" успешно добавлен в избранное!`
+                `Продукт "${productName}" успешно добавлен в избранное!`,
+                options
               );
             } catch (error) {
               bot.sendMessage(chatId, "Ошибка при сохранении продукта.");
@@ -385,15 +386,15 @@ bot.onText(/\/addFavourite/, (msg) => {
   });
 });
 
-bot.onText(/\/favourites/, async (msg) => {
-  const favourites = await CustomProduct.find();
+bot.onText(/\/Customs/, async (msg) => {
+  const customes = await CustomProduct.find();
   isCustomsProducts = true;
-  if (favourites.length === 0) {
+  if (customes.length === 0) {
     bot.sendMessage(msg.chat.id, "У вас нет сохраненных продуктов.");
   } else {
-    const buttons = favourites.map((product) => ({
+    const buttons = customes.map((product) => ({
       text: `${product.name} (КБЖУ: ${product.calories} ккал, ${product.protein} г белков, ${product.fat} г жиров, ${product.carbs} г углеводов)`,
-      callback_data: `fav_${product._id}`,
+      callback_data: `cus_${product._id}`,
     }));
 
     const replyMarkup = {
@@ -410,7 +411,7 @@ bot.on("callback_query", async (callbackQuery) => {
   const msg = callbackQuery.message;
   const action = callbackQuery.data;
 
-  if (action.startsWith("fav_")) {
+  if (action.startsWith("cus_")) {
     const productId = action.split("_")[1];
     const product = await CustomProduct.findById(productId);
 
@@ -461,7 +462,8 @@ bot.on("callback_query", async (callbackQuery) => {
               2
             )} г белков, ${adjustedNutrients.fat.toFixed(
               2
-            )} г жиров, ${adjustedNutrients.carbs.toFixed(2)} г углеводов`
+            )} г жиров, ${adjustedNutrients.carbs.toFixed(2)} г углеводов`,
+            options
           );
         } else {
           bot.sendMessage(msg.chat.id, "Пожалуйста, введите корректный вес.");
@@ -473,7 +475,7 @@ bot.on("callback_query", async (callbackQuery) => {
   }
 });
 
-bot.onText(/\/removeFavourite/, async (msg) => {
+bot.onText(/\/removeCustome/, async (msg) => {
   const products = await CustomProduct.find();
   if (products.length === 0) {
     bot.sendMessage(msg.chat.id, "У вас нет сохраненных продуктов.");
@@ -528,7 +530,11 @@ bot.on("callback_query", async (callbackQuery) => {
       await CustomProduct.deleteOne({ _id: productId });
 
       // Отправляем сообщение об успешном удалении
-      bot.sendMessage(msg.chat.id, "Продукт успешно удалён из избранного.");
+      bot.sendMessage(
+        msg.chat.id,
+        "Продукт успешно удалён из избранного.",
+        options
+      );
     } catch (error) {
       bot.sendMessage(msg.chat.id, "Произошла ошибка при удалении продукта.");
       console.error(error);
@@ -537,6 +543,13 @@ bot.on("callback_query", async (callbackQuery) => {
     // Если пользователь отменил удаление
     bot.sendMessage(msg.chat.id, "Удаление отменено.");
   }
+});
+
+bot.onText(/\/Help/, (msg) => {
+  bot.sendMessage(
+    msg.chat.id,
+    "Please text to developer for any questions @Dolor185"
+  );
 });
 // Парсер нутриентов из описания
 const parseNutrients = (description) => {
