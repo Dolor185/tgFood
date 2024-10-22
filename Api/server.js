@@ -103,7 +103,7 @@ app.get("/food-search", async (req, res) => {
     );
 
     res.json(apiResponse.data); // Отправляем полученные данные клиенту
-    console.log(`ответ API :${apiResponse.data}`);
+    console.log(`ответ API :${JSON.stringify(apiResponse.data)}`);
   } catch (error) {
     console.error(
       "Error fetching food data:",
