@@ -78,14 +78,15 @@ const checkAndRefreshToken = async () => {
 // Поиск продуктов
 app.get("/food-search", async (req, res) => {
   const { query, page } = req.query;
-
+  const url = `https://platform.fatsecret.com/rest/foods/search/v1`;
+  console.log(`Запрос к API: ${url}`);
   try {
     // Проверяем и обновляем токен при необходимости
     await checkAndRefreshToken();
 
     // Выполняем запрос к FatSecret API
     const apiResponse = await axios.get(
-      `https://platform.fatsecret.com/rest/foods/search/v1`,
+      url,
 
       {
         params: {
@@ -102,6 +103,7 @@ app.get("/food-search", async (req, res) => {
     );
 
     res.json(apiResponse.data); // Отправляем полученные данные клиенту
+    console.log(`ответ API :${apiResponse.data}`);
   } catch (error) {
     console.error(
       "Error fetching food data:",
