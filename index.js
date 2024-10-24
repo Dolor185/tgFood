@@ -79,7 +79,7 @@ bot.on("message", async (msg) => {
   if (msg.text && msg.text !== "Отмена") {
     // Сохраняем запрос для поиска продуктов
     userSearchQueries[msg.chat.id] = text;
-
+    currentPage = 1;
     const buttons = await getProducts(text, currentPage, msg.chat.id);
 
     if (buttons && buttons.length > 0) {
