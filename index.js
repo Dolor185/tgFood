@@ -76,8 +76,16 @@ bot.on("message", async (msg) => {
   if (text.startsWith("/") || isAddingProduct) return;
   if (isSelected) return;
   if (msg.voice) {
+    bot.sendMessage(
+      msg.chat.id,
+      "Извините, голосовые сообщения не поддерживаются."
+    );
   }
   if (msg.photo) {
+    bot.sendMessage(
+      msg.chat.id,
+      "Извините, фото пока не поддерживаются( мы работаем над этим!)."
+    );
   }
   if (msg.text && msg.text !== "Отмена") {
     // Сохраняем запрос для поиска продуктов
