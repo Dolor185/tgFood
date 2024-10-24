@@ -4,6 +4,7 @@ const qs = require("qs");
 const express = require("express");
 const cors = require("cors");
 const app = express();
+const CircularJSON = require("circular-json");
 
 app.use(cors());
 
@@ -103,7 +104,7 @@ app.get("/food-search", async (req, res) => {
     );
 
     res.json(apiResponse.data); // Отправляем полученные данные клиенту
-    console.log(`ответ API :${JSON.stringify(apiResponse)}`);
+    console.log(`ответ API :${CircularJSON.stringify(apiResponse)}`);
   } catch (error) {
     console.error(
       "Error fetching food data:",
