@@ -75,7 +75,10 @@ bot.on("message", async (msg) => {
 
   if (text.startsWith("/") || isAddingProduct) return;
   if (isSelected) return;
-
+  if (msg.voice) {
+  }
+  if (msg.photo) {
+  }
   if (msg.text && msg.text !== "Отмена") {
     // Сохраняем запрос для поиска продуктов
     userSearchQueries[msg.chat.id] = text;
