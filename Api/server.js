@@ -79,7 +79,7 @@ const checkAndRefreshToken = async () => {
 app.get("/food-search", async (req, res) => {
   const { query, page } = req.query;
   const url = `https://platform.fatsecret.com/rest/foods/search/v1`;
-  console.log(`Запрос к API: ${url}`);
+  console.log(`Запрос к API: ${url},${query}`);
   try {
     // Проверяем и обновляем токен при необходимости
     await checkAndRefreshToken();
