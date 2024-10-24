@@ -72,21 +72,24 @@ bot.onText(/\/NewProduct🥕/, (msg) => {
 // Обработка текстовых сообщений для поиска продуктов
 bot.on("message", async (msg) => {
   const text = msg.text;
-
-  if (text.startsWith("/") || isAddingProduct) return;
-  if (isSelected) return;
   if (msg.voice) {
     bot.sendMessage(
       msg.chat.id,
       "Извините, голосовые сообщения не поддерживаются."
     );
+    return;
   }
   if (msg.photo) {
     bot.sendMessage(
       msg.chat.id,
       "Извините, фото пока не поддерживаются( мы работаем над этим!)."
     );
+    return;
   }
+
+  if (text.startsWith("/") || isAddingProduct) return;
+  if (isSelected) return;
+
   if (msg.text && msg.text !== "Отмена") {
     // Сохраняем запрос для поиска продуктов
     userSearchQueries[msg.chat.id] = text;
