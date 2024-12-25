@@ -70,7 +70,10 @@ const checkAndRefreshToken = async () => {
       accessToken = tokenResponse.data.access_token;
       tokenExpiration = Date.now() + tokenResponse.data.expires_in * 1000;
     } catch (error) {
-      console.error("Error refreshing token:", error.message);
+      console.error(
+        "Error refreshing token:",
+        error.response ? error.response.data : error.message
+      );
       throw new Error("Failed to refresh access token");
     }
   }
@@ -80,7 +83,7 @@ const checkAndRefreshToken = async () => {
 app.get("/food-search", async (req, res) => {
   const { query, page } = req.query;
   const url = `https://platform.fatsecret.com/rest/foods/search/v1`;
-  console.log(`Запрос к API: ${url},${query},${page}`);
+
   try {
     // Проверяем и обновляем токен при необходимости
     await checkAndRefreshToken();
@@ -104,13 +107,39 @@ app.get("/food-search", async (req, res) => {
     );
 
     res.json(apiResponse.data); // Отправляем полученные данные клиенту
-    console.log(`ответ API :${CircularJSON.stringify(apiResponse)}`);
   } catch (error) {
     console.error(
       "Error fetching food data:",
       error.response ? error.response.data : error.message
     );
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/image-search", async (req, res) => {
+  const { query } = req.query;
+  const url = "https://platform.fatsecret.com/rest/image-recognition/v1";
+
+  try {
+    await checkAndRefreshToken();
+
+    const response = await axios.post(
+      url,
+      {
+        image_b64: query,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const foodData = response.data;
+    res.json(foodData);
+  } catch (error) {
+    console.error("Ошибка при распознавании изображения:", error.message);
+    res.status(500).send("Ошибка при распознавании изображения");
   }
 });
 

@@ -5,6 +5,7 @@ const axios = require("axios");
 const connectDB = require("./DB/db"); // Импортируйте файл подключения к БД
 const NutrientLog = require("./DB/NutrientLog");
 const CustomProduct = require("./DB/CustomProduct");
+const { query } = require("express");
 
 startServer();
 connectDB();
@@ -30,6 +31,16 @@ const searchFood = async (query, page = 0) => {
   } catch (error) {
     console.error("Error searching for food:", error.message);
     return [];
+  }
+};
+const searchImage = async (query) => {
+  try {
+    const response = await axios.get("http://localhost:3000/image-search", {
+      params: { query },
+    });
+    return response;
+  } catch (error) {
+    console.log(error.message);
   }
 };
 
@@ -80,10 +91,23 @@ bot.on("message", async (msg) => {
     return;
   }
   if (msg.photo) {
-    bot.sendMessage(
-      msg.chat.id,
-      "Извините, фото пока не поддерживаются( мы работаем над этим!)."
-    );
+    const photoId = msg.photo[msg.photo.length - 1].file_id;
+
+    const file = await bot.getFile(photoId);
+    const url = `https://api.telegram.org/file/bot${process.env.TELEGRAM_TOKEN}/${file.file_path}`;
+
+    // Загрузка изображения и конвертация в Base64
+    const imageBuffer = await axios.get(url, { responseType: "arraybuffer" });
+    const imageBase64 = Buffer.from(imageBuffer.data).toString("base64");
+    console.log(imageBase64.length);
+    const imageResults = await searchImage(imageBase64);
+
+    console.log(imageResults);
+
+    // bot.sendMessage(
+    //   msg.chat.id,
+    //   "Извините, фото пока не поддерживаются( мы работаем над этим!)."
+    // );
     return;
   }
 
