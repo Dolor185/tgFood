@@ -6,7 +6,7 @@ const connectDB = require("./DB/db"); // Импортируйте файл по�
 const NutrientLog = require("./DB/NutrientLog");
 const CustomProduct = require("./DB/CustomProduct");
 const { query } = require("express");
-
+// test fork
 startServer();
 connectDB();
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
