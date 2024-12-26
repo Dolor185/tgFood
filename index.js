@@ -1,11 +1,21 @@
 require("dotenv").config();
 const { startServer } = require("./Api/server");
 const TelegramBot = require("node-telegram-bot-api");
-const axios = require("axios");
 const connectDB = require("./DB/db"); // Импортируйте файл подключения к БД
-const NutrientLog = require("./DB/NutrientLog");
-const CustomProduct = require("./DB/CustomProduct");
-const { query } = require("express");
+const {
+  addAndUpdate,
+  findTotal,
+  resetTotal,
+  addCustom,
+  findCustom,
+  customsList,
+  deleteCustom,
+} = require("./DB/dbHooks");
+const parseNutrients = require("./hooks/parseNutrients");
+const adjustNutrients = require("./hooks/adjustNutrients");
+const getUnitAndAmountFromDescription = require("./hooks/getUnitAndAmountFromDescription");
+const searchFood = require("./hooks/searchFood");
+
 // test fork
 startServer();
 connectDB();
@@ -15,34 +25,6 @@ let searchedFoods = {};
 let isSelected = false;
 let currentPage = 1;
 let isAddingProduct = false;
-
-// Функция для поиска информации о продукте
-const searchFood = async (query, page = 0) => {
-  try {
-    const response = await axios.get("http://localhost:3000/food-search", {
-      params: { query, page },
-    });
-    // Проверяем, что в ответе есть объект 'foods' и массив 'food'
-    if (response.data && response.data.foods && response.data.foods.food) {
-      return response.data.foods.food; // Возвращаем массив продуктов
-    } else {
-      return []; // Если нет продуктов, возвращаем пустой массив
-    }
-  } catch (error) {
-    console.error("Error searching for food:", error.message);
-    return [];
-  }
-};
-const searchImage = async (query) => {
-  try {
-    const response = await axios.get("http://localhost:3000/image-search", {
-      params: { query },
-    });
-    return response;
-  } catch (error) {
-    console.log(error.message);
-  }
-};
 
 // Опции клавиатуры с кнопками
 const options = {
@@ -55,6 +37,25 @@ const options = {
     resize_keyboard: true, // Автоматический размер клавиатуры
     one_time_keyboard: true, // Скрывать клавиатуру после нажатия
   },
+};
+
+const getProducts = async (query, page, chatId) => {
+  const foods = await searchFood(query, page);
+
+  if (foods && foods.length > 0) {
+    searchedFoods[chatId] = foods;
+
+    const buttons = foods.map((food) => {
+      const nutrients = parseNutrients(food.food_description);
+      let brand = food.brand_name ? food.brand_name : "";
+      return {
+        text: `${brand} ${food.food_name} (КБЖУ: ${nutrients.calories} ккал, ${nutrients.protein} г белков, ${nutrients.fat} г жиров, ${nutrients.carbs} г углеводов)`,
+        callback_data: `${food.food_id}`,
+      };
+    });
+
+    return buttons;
+  }
 };
 
 // Функция для отправки приветственного сообщения с кнопками
@@ -91,23 +92,10 @@ bot.on("message", async (msg) => {
     return;
   }
   if (msg.photo) {
-    const photoId = msg.photo[msg.photo.length - 1].file_id;
-
-    const file = await bot.getFile(photoId);
-    const url = `https://api.telegram.org/file/bot${process.env.TELEGRAM_TOKEN}/${file.file_path}`;
-
-    // Загрузка изображения и конвертация в Base64
-    const imageBuffer = await axios.get(url, { responseType: "arraybuffer" });
-    const imageBase64 = Buffer.from(imageBuffer.data).toString("base64");
-    console.log(imageBase64.length);
-    const imageResults = await searchImage(imageBase64);
-
-    console.log(imageResults);
-
-    // bot.sendMessage(
-    //   msg.chat.id,
-    //   "Извините, фото пока не поддерживаются( мы работаем над этим!)."
-    // );
+    bot.sendMessage(
+      msg.chat.id,
+      "Извините, фото пока не поддерживаются( мы работаем над этим!)."
+    );
     return;
   }
 
@@ -195,19 +183,7 @@ bot.on("callback_query", async (callbackQuery) => {
           const userId = msg.chat.id; // Получаем Telegram user id
 
           // Найти запись пользователя и обновить её, если она существует, либо создать новую
-          await NutrientLog.findOneAndUpdate(
-            { userId }, // Поиск по userId
-            {
-              $inc: {
-                // Увеличиваем значения полей нутриентов
-                "totalNutrients.calories": adjustedNutrients.calories,
-                "totalNutrients.protein": adjustedNutrients.protein,
-                "totalNutrients.fat": adjustedNutrients.fat,
-                "totalNutrients.carbs": adjustedNutrients.carbs,
-              },
-            },
-            { upsert: true, new: true } // Создать новую запись, если она не найдена
-          );
+          await addAndUpdate(userId, adjustedNutrients);
 
           isSelected = false;
 
@@ -283,7 +259,7 @@ bot.on("callback_query", async (callbackQuery) => {
 bot.onText(/\/Total🔎/, async (msg) => {
   try {
     const userId = msg.chat.id; // Используем chat.id как уникальный идентификатор пользователя
-    const logs = await NutrientLog.find({ userId }).sort({ date: -1 }).limit(1); // Поиск логов по userId
+    const logs = await findTotal(userId); // Поиск логов по userId
 
     if (logs.length > 0) {
       const { totalNutrients } = logs[0];
@@ -313,17 +289,7 @@ bot.onText(/\/Reset💽/, async (msg) => {
   try {
     const userId = msg.chat.id;
     // Сбрасываем данные по текущему пользователю
-    await NutrientLog.updateMany(
-      { userId },
-      {
-        $set: {
-          "totalNutrients.calories": 0,
-          "totalNutrients.protein": 0,
-          "totalNutrients.fat": 0,
-          "totalNutrients.carbs": 0,
-        },
-      }
-    );
+    await resetTotal(userId);
 
     bot.sendMessage(msg.chat.id, "Ваш дневной счетчик был сброшен.", options);
   } catch (error) {
@@ -397,14 +363,14 @@ bot.onText(/\/addCustome/, (msg) => {
             }
 
             // Сохраняем продукт в MongoDB
-            const newProduct = new CustomProduct({
-              userId: chatId, // Привязываем продукт к пользователю
-              name: productName,
+            const newProduct = addCustom(
+              chatId,
+              productName,
               calories,
               protein,
               fat,
-              carbs,
-            });
+              carbs
+            );
             isAddingProduct = false;
             try {
               await newProduct.save();
@@ -415,7 +381,7 @@ bot.onText(/\/addCustome/, (msg) => {
               );
             } catch (error) {
               bot.sendMessage(chatId, "Ошибка при сохранении продукта.");
-              console.error(error);
+              console.error(error.message);
             }
           });
         });
@@ -425,12 +391,12 @@ bot.onText(/\/addCustome/, (msg) => {
 });
 
 bot.onText(/\/Customs/, async (msg) => {
-  const customes = await CustomProduct.find();
+  const customs = await customsList();
   isCustomsProducts = true;
-  if (customes.length === 0) {
+  if (customs.length === 0) {
     bot.sendMessage(msg.chat.id, "У вас нет сохраненных продуктов.");
   } else {
-    const buttons = customes.map((product) => ({
+    const buttons = customs.map((product) => ({
       text: `${product.name} (КБЖУ: ${product.calories} ккал, ${product.protein} г белков, ${product.fat} г жиров, ${product.carbs} г углеводов)`,
       callback_data: `cus_${product._id}`,
     }));
@@ -451,7 +417,7 @@ bot.on("callback_query", async (callbackQuery) => {
 
   if (action.startsWith("cus_")) {
     const productId = action.split("_")[1];
-    const product = await CustomProduct.findById(productId);
+    const product = await findCustom(productId);
 
     if (product) {
       isSelected = true;
@@ -477,18 +443,7 @@ bot.on("callback_query", async (callbackQuery) => {
 
           const userId = msg.chat.id;
           // Обновляем запись пользователя в MongoDB
-          await NutrientLog.findOneAndUpdate(
-            { userId }, // Поиск по userId
-            {
-              $inc: {
-                "totalNutrients.calories": adjustedNutrients.calories,
-                "totalNutrients.protein": adjustedNutrients.protein,
-                "totalNutrients.fat": adjustedNutrients.fat,
-                "totalNutrients.carbs": adjustedNutrients.carbs,
-              },
-            },
-            { upsert: true, new: true } // Создать новую запись, если она не найдена
-          );
+          await addAndUpdate(userId, adjustedNutrients);
           isSelected = false;
           bot.sendMessage(
             msg.chat.id,
@@ -514,7 +469,7 @@ bot.on("callback_query", async (callbackQuery) => {
 });
 
 bot.onText(/\/removeCustome/, async (msg) => {
-  const products = await CustomProduct.find();
+  const products = await customsList();
   if (products.length === 0) {
     bot.sendMessage(msg.chat.id, "У вас нет сохраненных продуктов.");
   } else {
@@ -530,7 +485,7 @@ bot.onText(/\/removeCustome/, async (msg) => {
     });
   }
 });
-// пробую реализовать удаление продуктов из избранных !!!!!!!!
+// удаление из кастомного продукта из бд
 bot.on("callback_query", async (callbackQuery) => {
   const msg = callbackQuery.message;
   const action = callbackQuery.data;
@@ -538,7 +493,7 @@ bot.on("callback_query", async (callbackQuery) => {
   if (action.startsWith("rem_")) {
     // Получаем ID продукта для удаления
     const productId = action.split("_")[1];
-    const product = await CustomProduct.findById(productId);
+    const product = await findCustom(productId);
 
     if (product) {
       // Генерируем инлайн-клавиатуру для подтверждения удаления
@@ -565,7 +520,7 @@ bot.on("callback_query", async (callbackQuery) => {
 
     try {
       // Удаляем продукт из базы данных
-      await CustomProduct.deleteOne({ _id: productId });
+      await deleteCustom(productId);
 
       // Отправляем сообщение об успешном удалении
       bot.sendMessage(
@@ -589,59 +544,3 @@ bot.onText(/\/Help/, (msg) => {
     "Please text to developer for any questions @Dolor185"
   );
 });
-// Парсер нутриентов из описания
-const parseNutrients = (description) => {
-  const match = description.match(
-    /Calories:\s*([\d.]+)kcal.*Fat:\s*([\d.]+)g.*Carbs:\s*([\d.]+)g.*Protein:\s*([\d.]+)g/
-  );
-  if (!match) {
-    return { calories: 0, fat: 0, carbs: 0, protein: 0 }; // если не удалось распарсить
-  }
-  return {
-    calories: parseFloat(match[1]),
-    fat: parseFloat(match[2]),
-    carbs: parseFloat(match[3]),
-    protein: parseFloat(match[4]),
-  };
-};
-
-const adjustNutrients = (nutrients, quantity, baseAmount) => {
-  const factor = quantity / baseAmount; // Пропорция от базового количества (например, от 100г или 1 штуки)
-  return {
-    calories: nutrients.calories * factor,
-    protein: nutrients.protein * factor,
-    fat: nutrients.fat * factor,
-    carbs: nutrients.carbs * factor,
-  };
-};
-
-const getUnitAndAmountFromDescription = (description) => {
-  // Пример: "Per 100g" или "Per 1 medium apple"
-  const match = description.match(/Per\s+([\d.]+)\s*(\w+\s*\w*)/);
-  if (match) {
-    return {
-      amount: parseFloat(match[1]), // Количество, например 100 (грамм) или 1 (яблоко)
-      unit: match[2], // Единица измерения, например "g" или "medium apple"
-    };
-  }
-  return { amount: 100, unit: "g" }; // По умолчанию 100г, если ничего не найдено
-};
-
-const getProducts = async (query, page, chatId) => {
-  const foods = await searchFood(query, page);
-
-  if (foods && foods.length > 0) {
-    searchedFoods[chatId] = foods;
-
-    const buttons = foods.map((food) => {
-      const nutrients = parseNutrients(food.food_description);
-      let brand = food.brand_name ? food.brand_name : "";
-      return {
-        text: `${brand} ${food.food_name} (КБЖУ: ${nutrients.calories} ккал, ${nutrients.protein} г белков, ${nutrients.fat} г жиров, ${nutrients.carbs} г углеводов)`,
-        callback_data: `${food.food_id}`,
-      };
-    });
-
-    return buttons;
-  }
-};
