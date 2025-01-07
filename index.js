@@ -27,12 +27,15 @@ let currentPage = 1;
 let isAddingProduct = false;
 
 // Опции клавиатуры с кнопками
+const webAppUrl =
+  "https://3acf-2001-56a-fe0a-1700-f995-536d-f4b8-27f4.ngrok-free.app";
 const options = {
   reply_markup: {
     keyboard: [
       ["/NewProduct🥕", "/Total🔎"], // Кнопки
       ["/Reset💽", "/Help🆘"],
-      ["/Customs", "/addCustome", "/removeCustome"], // Кнопка сброса и дополнительная кнопка
+      ["/Customs", "/addCustome", "/removeCustome"],
+      [{ text: "APP", web_app: { url: webAppUrl } }], // Кнопка сброса и дополнительная кнопка
     ],
     resize_keyboard: true, // Автоматический размер клавиатуры
     one_time_keyboard: true, // Скрывать клавиатуру после нажатия
@@ -63,6 +66,7 @@ const sendWelcomeMessage = (chatId) => {
   bot.sendMessage(
     chatId,
     `Привет! Я помогу тебе вести дневник питания. Выбери опцию:`,
+
     options
   );
 };
