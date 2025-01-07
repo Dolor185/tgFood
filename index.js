@@ -25,7 +25,7 @@ let searchedFoods = {};
 let isSelected = false;
 let currentPage = 1;
 let isAddingProduct = false;
-
+// https://tg-food-web-app-production.up.railway.app
 // Опции клавиатуры с кнопками
 const webAppUrl = "https://tg-food-web-app-production.up.railway.app";
 const options = {
