@@ -27,7 +27,7 @@ let currentPage = 1;
 let isAddingProduct = false;
 
 // Опции клавиатуры с кнопками
-const webAppUrl = "http:localhost:3001";
+const webAppUrl = "https://tg-food-web-app-production.up.railway.app";
 const options = {
   reply_markup: {
     keyboard: [
