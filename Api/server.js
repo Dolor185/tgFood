@@ -116,33 +116,6 @@ app.get("/food-search", async (req, res) => {
   }
 });
 
-app.get("/image-search", async (req, res) => {
-  const { query } = req.query;
-  const url = "https://platform.fatsecret.com/rest/image-recognition/v1";
-
-  try {
-    await checkAndRefreshToken();
-
-    const response = await axios.post(
-      url,
-      {
-        image_b64: query,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    const foodData = response.data;
-    res.json(foodData);
-  } catch (error) {
-    console.error("Ошибка при распознавании изображения:", error.message);
-    res.status(500).send("Ошибка при распознавании изображения");
-  }
-});
-
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
