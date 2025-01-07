@@ -27,8 +27,7 @@ let currentPage = 1;
 let isAddingProduct = false;
 
 // Опции клавиатуры с кнопками
-const webAppUrl =
-  "https://3acf-2001-56a-fe0a-1700-f995-536d-f4b8-27f4.ngrok-free.app";
+const webAppUrl = "http:localhost:3001";
 const options = {
   reply_markup: {
     keyboard: [
