@@ -5,6 +5,17 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const CircularJSON = require("circular-json");
+const {
+  addAndUpdate,
+  findTotal,
+  resetTotal,
+  addCustom,
+  findCustom,
+  customsList,
+  deleteCustom,
+  findAndDelete,
+} = require("../DB/dbHooks");
+const cron = require("node-cron");
 
 app.use(cors());
 
@@ -13,6 +24,21 @@ const apiSecret = process.env.API_SECRET;
 
 let accessToken = "";
 let tokenExpiration = 0;
+
+cron.schedule("0 0 * * *", async () => {
+  try {
+    console.log("Running resetTotal at midnight");
+
+    const users = await NutrientLog.distinct("userId");
+    for (const userId of users) {
+      await resetTotal(userId);
+    }
+
+    console.log("resetTotal completed for all users");
+  } catch (error) {
+    console.error("Error running resetTotal:", error.message);
+  }
+});
 
 app.post("/get-token", async (req, res) => {
   try {
@@ -116,6 +142,62 @@ app.get("/food-search", async (req, res) => {
   }
 });
 
+app.get("/add-update", async (req, res) => {
+  const { nutrients, user, products } = req.query;
+
+  try {
+    // Проверяем, является ли nutrients строкой
+    if (typeof nutrients !== "string") {
+      throw new TypeError("Nutrients must be a valid JSON string");
+    }
+
+    const parsedNutrients = JSON.parse(nutrients);
+    const parsedProducts = JSON.parse(products);
+
+    const result = await addAndUpdate(user, parsedNutrients, parsedProducts);
+
+    res.status(200).json({ message: "Nutrients updated successfully" });
+  } catch (error) {
+    console.error("Error updating nutrients:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/check-nutrients", async (req, res) => {
+  const { user } = req.query;
+  try {
+    const result = await findTotal(user);
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching nutrients:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/reset-nutrients", async (req, res) => {
+  const { user } = req.query;
+  try {
+    const result = await resetTotal(user);
+
+    res.status(200).json({ message: "Nutrients reset successfully" });
+  } catch (error) {
+    console.error("Error resetting nutrients:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/delete-product", async (req, res) => {
+  const { user, productId } = req.query;
+
+  try {
+    const result = await findAndDelete(user, productId);
+    res.status(200).json({ message: "Product deleted successfully", result });
+  } catch (error) {
+    console.error("Error deleting product:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
