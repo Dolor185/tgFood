@@ -1,8 +1,26 @@
 const NutrientLog = require("./NutrientLog");
 const CustomProduct = require("./CustomProduct");
 
-const addAndUpdate = (userId, nutrients) => {
-  return NutrientLog.findOneAndUpdate(
+const addAndUpdate = async (userId, nutrients, products) => {
+  if (
+    !nutrients ||
+    typeof nutrients.calories !== "number" ||
+    typeof nutrients.protein !== "number" ||
+    typeof nutrients.fat !== "number" ||
+    typeof nutrients.carbs !== "number"
+  ) {
+    throw new TypeError("Неверный объект nutrients");
+  }
+  if (
+    !products ||
+    typeof products.name !== "string" ||
+    typeof products.amount !== "number" ||
+    typeof products.nutrients !== "object"
+  ) {
+    throw new TypeError("Неверный объект product");
+  }
+
+  const result = await NutrientLog.findOneAndUpdate(
     { userId }, // Поиск по userId
     {
       $inc: {
@@ -12,9 +30,14 @@ const addAndUpdate = (userId, nutrients) => {
         "totalNutrients.fat": nutrients.fat,
         "totalNutrients.carbs": nutrients.carbs,
       },
+      $push: {
+        products: products,
+      },
     },
-    { upsert: true, new: true } // Создать новую запись, если она не найдена
+    { upsert: true, new: true, returnDocument: "after" } // Создать новую запись, если она не найдена
   );
+
+  return result;
 };
 
 const findTotal = (userId) => {
@@ -26,10 +49,13 @@ const resetTotal = (userId) => {
     { userId },
     {
       $set: {
-        "totalNutrients.calories": 0,
-        "totalNutrients.protein": 0,
-        "totalNutrients.fat": 0,
-        "totalNutrients.carbs": 0,
+        products: [],
+        totalNutrients: {
+          calories: 0,
+          protein: 0,
+          fat: 0,
+          carbs: 0,
+        },
       },
     }
   );
@@ -57,6 +83,16 @@ const deleteCustom = (productId) => {
   return CustomProduct.deleteOne({ _id: productId });
 };
 
+const findAndDelete = (userId, productId) => {
+  return NutrientLog.updateOne(
+    { userId },
+    {
+      $pull: {
+        products: { _id: productId },
+      },
+    }
+  );
+};
 module.exports = {
   addAndUpdate,
   findTotal,
@@ -65,4 +101,5 @@ module.exports = {
   findCustom,
   customsList,
   deleteCustom,
+  findAndDelete,
 };

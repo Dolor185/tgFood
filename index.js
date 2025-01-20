@@ -24,17 +24,15 @@ const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 let searchedFoods = {};
 let isSelected = false;
 let currentPage = 1;
+
 let isAddingProduct = false;
 
-// Опции клавиатуры с кнопками
-const webAppUrl = "https://tg-food-web-app-production.up.railway.app";
 const options = {
   reply_markup: {
     keyboard: [
       ["/NewProduct🥕", "/Total🔎"], // Кнопки
       ["/Reset💽", "/Help🆘"],
       ["/Customs", "/addCustome", "/removeCustome"],
-      [{ text: "APP", web_app: { url: webAppUrl } }], // Кнопка сброса и дополнительная кнопка
     ],
     resize_keyboard: true, // Автоматический размер клавиатуры
     one_time_keyboard: true, // Скрывать клавиатуру после нажатия

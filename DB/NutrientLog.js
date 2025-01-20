@@ -9,6 +9,19 @@ const nutrientLogSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  products: [
+    {
+      id: Number,
+      name: String,
+      amount: Number,
+      nutrients: {
+        calories: Number,
+        protein: Number,
+        fat: Number,
+        carbs: Number,
+      },
+    },
+  ],
   totalNutrients: {
     calories: Number,
     protein: Number,
