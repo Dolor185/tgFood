@@ -83,12 +83,27 @@ const deleteCustom = (productId) => {
   return CustomProduct.deleteOne({ _id: productId });
 };
 
-const findAndDelete = (userId, productId) => {
+const findAndDelete = async (userId, productId) => {
+  // Найти продукт для удаления
+  const log = await NutrientLog.findOne({ userId });
+  const productToDelete = log.products.find(
+    (product) => product.id === Number(productId)
+  );
+
+  if (!productToDelete) {
+    throw new Error("Продукт не найден");
+  }
+
+  // Удалить продукт и обновить totalNutrients
   return NutrientLog.updateOne(
     { userId },
     {
-      $pull: {
-        products: { _id: productId },
+      $pull: { products: { id: Number(productId) } },
+      $inc: {
+        "totalNutrients.calories": -productToDelete.nutrients.calories,
+        "totalNutrients.protein": -productToDelete.nutrients.protein,
+        "totalNutrients.fat": -productToDelete.nutrients.fat,
+        "totalNutrients.carbs": -productToDelete.nutrients.carbs,
       },
     }
   );
