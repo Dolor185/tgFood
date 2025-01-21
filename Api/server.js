@@ -108,7 +108,7 @@ const checkAndRefreshToken = async () => {
 // Поиск продуктов
 app.get("/food-search", async (req, res) => {
   const { query, page } = req.query;
-  const url = `https://platform.fatsecret.com/rest/foods/search/v1`;
+  const url = `https://platform.fatsecret.com/rest/foods/search/v3`;
 
   try {
     // Проверяем и обновляем токен при необходимости
@@ -136,6 +136,36 @@ app.get("/food-search", async (req, res) => {
   } catch (error) {
     console.error(
       "Error fetching food data:",
+      error.response ? error.response.data : error.message
+    );
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/food-details", async (req, res) => {
+  const { id } = req.query;
+  const url = "https://platform.fatsecret.com/rest/food/v4";
+  try {
+    await checkAndRefreshToken();
+
+    const apiResponse = await axios.get(
+      url,
+
+      {
+        params: {
+          food_id: id,
+          format: "json", // Указываем формат ответа
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+    res.json(apiResponse.data);
+  } catch (error) {
+    console.error(
+      "Error fetching food details:",
       error.response ? error.response.data : error.message
     );
     res.status(500).json({ error: error.message });
@@ -187,14 +217,19 @@ app.get("/reset-nutrients", async (req, res) => {
   }
 });
 
-app.delete("/delete-product", async (req, res) => {
+app.get("/delete-product", async (req, res) => {
   const { user, productId } = req.query;
 
   try {
     const result = await findAndDelete(user, productId);
-    res.status(200).json({ message: "Product deleted successfully", result });
+    if (result.modifiedCount === 0) {
+      return res
+        .status(404)
+        .json({ message: "Продукт не найден или не удалён" });
+    }
+    res.status(200).json({ message: "Продукт успешно удалён", result });
   } catch (error) {
-    console.error("Error deleting product:", error.message);
+    console.error("Ошибка при удалении продукта:", error.message);
     res.status(500).json({ error: error.message });
   }
 });

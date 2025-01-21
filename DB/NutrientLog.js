@@ -14,6 +14,7 @@ const nutrientLogSchema = new mongoose.Schema({
       id: Number,
       name: String,
       amount: Number,
+      metric_serving_unit: String,
       nutrients: {
         calories: Number,
         protein: Number,
