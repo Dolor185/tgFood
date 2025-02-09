@@ -46,7 +46,7 @@ app.post("/get-token", async (req, res) => {
       "https://oauth.fatsecret.com/connect/token",
       qs.stringify({
         grant_type: "client_credentials",
-        scope: "premier", // Проверьте, что это тот scope, который вам нужен
+        scope: "premier barcode", // Проверьте, что это тот scope, который вам нужен
       }), // Преобразуем параметры для x-www-form-urlencoded
       {
         auth: {
@@ -80,7 +80,7 @@ const checkAndRefreshToken = async () => {
         "https://oauth.fatsecret.com/connect/token",
         qs.stringify({
           grant_type: "client_credentials",
-          scope: "premier",
+          scope: "premier barcode",
         }),
         {
           auth: {
@@ -230,6 +230,36 @@ app.get("/delete-product", async (req, res) => {
     res.status(200).json({ message: "Продукт успешно удалён", result });
   } catch (error) {
     console.error("Ошибка при удалении продукта:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/getByBarcode", async (req, res) => {
+  const { barcode } = req.query;
+  const url = "https://platform.fatsecret.com/rest/food/barcode/find-by-id/v1";
+  try {
+    await checkAndRefreshToken();
+
+    const apiResponse = await axios.get(
+      url,
+
+      {
+        params: {
+          barcode: barcode,
+          format: "json", // Указываем формат ответа
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+    res.json(apiResponse.data);
+  } catch (error) {
+    console.error(
+      "Error fetching food details:",
+      error.response ? error.response.data : error.message
+    );
     res.status(500).json({ error: error.message });
   }
 });
