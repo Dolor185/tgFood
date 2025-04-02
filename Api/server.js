@@ -18,11 +18,7 @@ const {
 const cron = require("node-cron");
 
 
-app.use(cors({
-  origin: "*", // Разрешает запросы с любого источника (лучше указать Telegram WebApp)
-  methods: "GET,POST",
-  allowedHeaders: "Content-Type",
-}));
+app.use(cors());
 const apiKey = process.env.API_KEY;
 const apiSecret = process.env.API_SECRET;
 
