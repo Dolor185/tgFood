@@ -276,7 +276,7 @@ app.post("/first-open", async (req, res) => {
 
     if (!userLog) {
       // Создаем запись, если пользователь впервые зашел
-      userLog = new Log({ userId, isFirstLogin: true });
+      userLog = new Log({ user, isFirstLogin: true });
       await userLog.save();
       return res.json({ isFirstLogin: true });
     }
