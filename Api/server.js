@@ -14,6 +14,7 @@ const {
   customsList,
   deleteCustom,
   findAndDelete,
+  isFirstLogin
 } = require("../DB/dbHooks");
 const cron = require("node-cron");
 
@@ -268,16 +269,12 @@ app.post("/first-open", async (req, res) => {
   const { user } = req.body;
 //adadasddasdsdasd
   try {
-    let userLog = await Log.findOne({ user });
+    let userLog = await isFirstLogin(user);
 
-    if (!userLog) {
-      // Создаем запись, если пользователь впервые зашел
-      userLog = new Log({ user, isFirstLogin: true });
-      await userLog.save();
-      return res.json({ isFirstLogin: true });
-    }
+      res.status(200).json(userLog);
+    
 
-    res.json({ isFirstLogin: userLog.isFirstLogin });
+    
   } catch (error) {
     console.error("Error checking first login:", error);
     res.status(500).json({ error: "Internal server error" });
