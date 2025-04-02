@@ -17,8 +17,12 @@ const {
 } = require("../DB/dbHooks");
 const cron = require("node-cron");
 
-app.use(cors());
 
+app.use(cors({
+  origin: "*", // Разрешает запросы с любого источника (лучше указать Telegram WebApp)
+  methods: "GET,POST",
+  allowedHeaders: "Content-Type",
+}));
 const apiKey = process.env.API_KEY;
 const apiSecret = process.env.API_SECRET;
 
@@ -263,6 +267,27 @@ app.get("/getByBarcode", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+app.post("/first-open", async (req, res) => {
+  const { user } = req.body;
+
+  try {
+    let userLog = await Log.findOne({ user });
+
+    if (!userLog) {
+      // Создаем запись, если пользователь впервые зашел
+      userLog = new Log({ userId, isFirstLogin: true });
+      await userLog.save();
+      return res.json({ isFirstLogin: true });
+    }
+
+    res.json({ isFirstLogin: userLog.isFirstLogin });
+  } catch (error) {
+    console.error("Error checking first login:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
