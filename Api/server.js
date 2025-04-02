@@ -270,7 +270,7 @@ app.get("/getByBarcode", async (req, res) => {
 
 app.post("/first-open", async (req, res) => {
   const { user } = req.body;
-
+//adadasddasdsdasd
   try {
     let userLog = await Log.findOne({ user });
 
