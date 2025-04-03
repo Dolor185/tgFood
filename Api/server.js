@@ -266,7 +266,7 @@ app.get("/getByBarcode", async (req, res) => {
 });
 
 app.get("/first-open", async (req, res) => {
-  const { user } = req.body;
+  const { user } = req.query;
 //adadasddasdsdasd
   try {
     let userLog = await isFirstLogin(user);
