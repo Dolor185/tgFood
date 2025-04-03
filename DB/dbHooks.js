@@ -112,12 +112,7 @@ const findAndDelete = async (userId, productId) => {
 const isFirstLogin = async (userId) => {
   const log = await NutrientLog.findOne({ userId });
   if (!log) {
-    // Если лог не найден, создаем новый
-    const newLog = new NutrientLog({
-      userId,
-      isFirstLogin: true,
-    });
-    await newLog.save();
+    
     return true; // Это первый логин
   }
   return false; // Это не первый логин
