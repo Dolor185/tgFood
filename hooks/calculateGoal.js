@@ -1,6 +1,6 @@
 
 
-export const calculateCalories = (gender, weight, height, age, activityLevel, goal) => {
+ const calculateCalories = (gender, weight, height, age, activityLevel, goal) => {
     let BMR;
   
     if (gender === "male") {
@@ -32,3 +32,5 @@ export const calculateCalories = (gender, weight, height, age, activityLevel, go
   
     return Math.round(adjustedCalories);
   };
+
+  module.exports = calculateCalories;
