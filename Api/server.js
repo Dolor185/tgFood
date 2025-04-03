@@ -19,6 +19,8 @@ const {
   isFirstLogin
 } = require("../DB/dbHooks");
 const cron = require("node-cron");
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 app.use(cors({ origin: "*" }));
