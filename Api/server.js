@@ -19,7 +19,7 @@ const {
 const cron = require("node-cron");
 
 
-app.use(cors());
+app.use(cors({ origin: "*" }));
 const apiKey = process.env.API_KEY;
 const apiSecret = process.env.API_SECRET;
 
