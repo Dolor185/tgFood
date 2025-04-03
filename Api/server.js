@@ -1,5 +1,6 @@
 require("dotenv").config();
 const axios = require("axios");
+const User = require("../DB/User");
 const qs = require("qs");
 const express = require("express");
 const cors = require("cors");
@@ -278,6 +279,29 @@ app.get("/first-open", async (req, res) => {
   } catch (error) {
     console.error("Error checking first login:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/calculate-calories", async (req, res) => {
+  try {
+    const { userId, gender, weight, height, age, activityLevel, goal } = req.body;
+    const dailyCalories = calculateCalories(gender, weight, height, age, activityLevel, goal);
+
+    const user = new User({
+      userId,
+      gender,
+      weight,
+      height,
+      age,
+      activityLevel,
+      goal,
+      dailyCalories
+    });
+
+    await user.save();
+    res.status(201).json({ message: "Данные пользователя сохранены", dailyCalories });
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка при сохранении данных" });
   }
 });
 
