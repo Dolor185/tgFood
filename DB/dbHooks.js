@@ -1,4 +1,5 @@
 const NutrientLog = require("./NutrientLog");
+const User = require("./User");
 const CustomProduct = require("./CustomProduct");
 
 const addAndUpdate = async (userId, nutrients, products) => {
@@ -110,7 +111,7 @@ const findAndDelete = async (userId, productId) => {
 };
 
 const isFirstLogin = async (userId) => {
-  const log = await NutrientLog.findOne({ userId });
+  const log = await User.findOne({ userId });
   if (!log) {
     
     return true; // Это первый логин
