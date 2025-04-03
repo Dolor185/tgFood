@@ -285,6 +285,8 @@ app.get("/first-open", async (req, res) => {
 
 app.post("/calculate-calories", async (req, res) => {
   try {
+    console.log("Полученные данные:", req.body);
+
     const { userId, gender, weight, height, age, activityLevel, goal } = req.body;
     const dailyCalories = calculateCalories(gender, weight, height, age, activityLevel, goal);
 
