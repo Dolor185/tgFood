@@ -265,7 +265,7 @@ app.get("/getByBarcode", async (req, res) => {
   }
 });
 
-app.post("/first-open", async (req, res) => {
+app.get("/first-open", async (req, res) => {
   const { user } = req.body;
 //adadasddasdsdasd
   try {
