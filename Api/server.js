@@ -6,8 +6,8 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const CircularJSON = require("circular-json");
-const calculateCalories = require('../hooks/calculateGoal')
-const calculateNutrients = require('../hooks/calculateGoal')
+const {calculateCalories, calculateNutrients} = require('../hooks/calculateGoal')
+
 const {
   addAndUpdate,
   findTotal,

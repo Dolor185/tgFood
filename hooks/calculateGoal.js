@@ -45,4 +45,4 @@
 
   }
 
-  module.exports = calculateCalories, calculateNutrients;
+  module.exports = {calculateCalories, calculateNutrients}
