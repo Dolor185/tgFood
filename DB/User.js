@@ -24,7 +24,14 @@ const userSchema = new mongoose.Schema({
     enum: ["lose", "maintain", "gain"],
     required: true,
   },
-  dailyCalories: { type: Number, required: true }, // Суточная норма калорий
+  dailyCalories: { type: Number, required: true }, 
+
+  nutrients: {
+    protein: { type: Number, required: true }, // Белки
+    fat: { type: Number, required: true }, // Жиры
+    carbs: { type: Number, required: true }, // Углеводы
+  },
+  
 });
 
 const User = mongoose.model("User", userSchema);
