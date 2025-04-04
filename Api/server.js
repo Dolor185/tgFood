@@ -7,6 +7,7 @@ const cors = require("cors");
 const app = express();
 const CircularJSON = require("circular-json");
 const calculateCalories = require('../hooks/calculateGoal')
+const calculateNutrients = require('../hooks/calculateGoal')
 const {
   addAndUpdate,
   findTotal,
@@ -292,6 +293,32 @@ app.post("/calculate-calories", async (req, res) => {
     const { userId, gender, weight, height, age, activityLevel, goal } = req.body;
     const dailyCalories = calculateCalories(gender, weight, height, age, activityLevel, goal);
 
+    let proteinCoef 
+    let fatCoef
+
+    if(goal === "lose") {
+      proteinCoef = 2.3
+      fatCoef = 0.9
+    }
+
+    if(goal === "gain") {
+      proteinCoef = 2.0
+      fatCoef = 1.1
+    }
+
+    if(goal === "maintain") {
+      proteinCoef = 1.8
+      fatCoef = 1.0
+    }
+
+    const {protein, fat, carbs} = calculateNutrients(dailyCalories, proteinCoef, fatCoef, weight)
+
+    const nutrients = {
+      protein: protein,
+      fat: fat,
+      carbs: carbs
+    };
+
     const user = new User({
       userId,
       gender,
@@ -300,7 +327,8 @@ app.post("/calculate-calories", async (req, res) => {
       age,
       activityLevel,
       goal,
-      dailyCalories
+      dailyCalories,
+      nutrients
     });
 
     await user.save();

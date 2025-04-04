@@ -33,4 +33,16 @@
     return Math.round(adjustedCalories);
   };
 
-  module.exports = calculateCalories;
+  const calculateNutrients = (calories, proteinCoef, fatCoef , weight) => {
+    const protein = Math.round(proteinCoef * weight) ;
+    const fat = Math.round(fatCoef * weight);
+    const carbs = Math.round((calories - (protein * 4 + fat * 9)) / 4);
+    return {
+      protein,
+      fat,
+      carbs,
+    };
+
+  }
+
+  module.exports = calculateCalories, calculateNutrients;
