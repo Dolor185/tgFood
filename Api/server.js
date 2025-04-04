@@ -356,7 +356,9 @@ app.post("/update-coefficients", async (req, res) => {
   
 
   
-    user.nutrients = { protein, fat, carbs };
+    await User.updateOne({ userId }, { $set: { 'nutrients': { protein, fat, carbs } } });
+
+
 
     // Сохраняем обновленные данные
     await user.save();
