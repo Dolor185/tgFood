@@ -338,6 +338,35 @@ app.post("/calculate-calories", async (req, res) => {
   }
 });
 
+app.post("/update-coefficients", async (req, res) => {
+  try {
+    const { userId, proteinCoef, fatCoef } = req.body;
+
+    // Обновляем коэффициенты для пользователя в базе данных
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ error: "Пользователь не найден" });
+    }
+    const dailyCalories = user.dailyCalories;
+    const weight = user.weight; // Получаем вес пользователя из базы данных
+    const {protein, fat, carbs} = calculateNutrients(dailyCalories, proteinCoef, fatCoef, weight)
+
+
+
+  
+
+  
+    user.nutrients = { protein, fat, carbs };
+
+    // Сохраняем обновленные данные
+    await user.save();
+
+    res.status(200).json({ dailyCalories, nutrients: { protein, fat, carbs } });
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка при обновлении коэффициентов" });
+  }
+});
+
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
