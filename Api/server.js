@@ -332,7 +332,7 @@ app.post("/calculate-calories", async (req, res) => {
     });
 
     await user.save();
-    res.status(201).json({ message: "Данные пользователя сохранены", dailyCalories });
+    res.status(201).json({ message: "Данные пользователя сохранены", dailyCalories, nutrients });
   } catch (error) {
     res.status(500).json({ error: "Ошибка при сохранении данных" });
   }
