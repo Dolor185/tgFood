@@ -371,10 +371,10 @@ app.post("/update-coefficients", async (req, res) => {
 
 app.get('/limits' , async (req, res) => {
   try {
-    const { userId } = req.query;
-    const user = await User.findOne({ userId });
+    const { user} = req.query;
+    const log = await User.findOne({ user });
 
-    const nutrients = user.nutrients;
+    const nutrients = log.nutrients;
 
     res.status(200).json(nutrients);
   } catch (error) {
