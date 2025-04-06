@@ -369,6 +369,21 @@ app.post("/update-coefficients", async (req, res) => {
   }
 });
 
+app.get('/limits' , async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const user = await User.findOne({ userId });
+
+    const nutrients = user.nutrients;
+
+    res.status(200).json(nutrients);
+  } catch (error) {
+    console.error("Error fetching limits:", error.message);
+    res.status(500).json({ error: error.message });
+    
+  }
+})
+
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
