@@ -368,21 +368,55 @@ app.post("/update-coefficients", async (req, res) => {
     res.status(500).json({ error: "Ошибка при обновлении коэффициентов" });
   }
 });
-
-app.get('/limits' , async (req, res) => {
+app.post("/update-period", async (req, res) => {
   try {
-    const { user} = req.query;
-    const log = await User.findOne({ userId:user });
+    const { userId, period } = req.body;
 
-    const nutrients = log.nutrients;
+    if (![1, 3, 7].includes(period)) {
+      return res.status(400).json({ error: "Недопустимый период" });
+    }
 
-    res.status(200).json(nutrients);
+    const user = await User.findOneAndUpdate(
+      { userId },
+      { prtiod: period },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "Пользователь не найден" });
+    }
+
+    res.json({ message: "Период обновлён", period: user.prtiod });
   } catch (error) {
-    console.error("Error fetching limits:", error.message);
-    res.status(500).json({ error: error.message });
-    
+    res.status(500).json({ error: "Ошибка при обновлении периода" });
   }
-})
+});
+
+app.get("/limits", async (req, res) => {
+  try {
+    const { user } = req.query;
+
+    const foundUser = await User.findOne({ userId: user });
+    if (!foundUser) {
+      return res.status(404).json({ error: "Пользователь не найден" });
+    }
+
+    const period = foundUser.prtiod || 1;
+
+    const { nutrients } = foundUser;
+    const scaledNutrients = {
+  
+      protein: nutrients.protein * period,
+      fat: nutrients.fat * period,
+      carbs: nutrients.carbs * period,
+    };
+
+    res.json(scaledNutrients);
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка при получении лимитов" });
+  }
+});
+
 
 const startServer = () => {
   app.listen(3000, () => {

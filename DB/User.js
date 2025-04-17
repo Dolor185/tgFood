@@ -31,6 +31,10 @@ const userSchema = new mongoose.Schema({
     fat: { type: Number, required: true }, // Жиры
     carbs: { type: Number, required: true }, // Углеводы
   },
+  prtiod: {
+    type: Number,
+    default: 1,
+  }, 
   
 });
 
