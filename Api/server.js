@@ -401,7 +401,7 @@ app.get("/limits", async (req, res) => {
       return res.status(404).json({ error: "Пользователь не найден" });
     }
 
-    const period = foundUser.prtiod || 1;
+    const period = foundUser.period || 1;
 
     const { nutrients, dailyCalories} = foundUser;
     const scaledNutrients = {
@@ -409,9 +409,10 @@ app.get("/limits", async (req, res) => {
       protein: nutrients.protein * period,
       fat: nutrients.fat * period,
       carbs: nutrients.carbs * period,
+      dailyCalories: dailyCalories * period,
     };
 
-    res.json(scaledNutrients, dailyCalories);
+    res.json(scaledNutrients);
   } catch (error) {
     res.status(500).json({ error: "Ошибка при получении лимитов" });
   }
