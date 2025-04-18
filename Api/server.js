@@ -378,7 +378,7 @@ app.post("/update-period", async (req, res) => {
 
     const user = await User.findOneAndUpdate(
       { userId },
-      { prtiod: period },
+      { period: period },
       { new: true }
     );
 
