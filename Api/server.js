@@ -403,7 +403,7 @@ app.get("/limits", async (req, res) => {
 
     const period = foundUser.prtiod || 1;
 
-    const { nutrients } = foundUser;
+    const { nutrients, dailyCalories} = foundUser;
     const scaledNutrients = {
   
       protein: nutrients.protein * period,
@@ -411,7 +411,7 @@ app.get("/limits", async (req, res) => {
       carbs: nutrients.carbs * period,
     };
 
-    res.json(scaledNutrients);
+    res.json(scaledNutrients, dailyCalories);
   } catch (error) {
     res.status(500).json({ error: "Ошибка при получении лимитов" });
   }
