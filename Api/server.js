@@ -420,12 +420,12 @@ app.get("/limits", async (req, res) => {
 
 app.post('/update-limits', async (req, res) => {
   try {
-    const { userId,nutrients } = req.body;
+    const { userId,nutrients, dailyCalories } = req.body;
 
     // Обновляем лимиты для пользователя в базе данных
     const user = await User.findOneAndUpdate(
       { userId },
-      { nutrients}
+      { nutrients:nutrients},{dailyCalories:dailyCalories}
     )
     if (!user) {
       return res.status(404).json({ error: "Пользователь не найден" });
