@@ -427,7 +427,11 @@ app.post('/update-limits', async (req, res) => {
     // Обновляем лимиты для пользователя в базе данных
     const user = await User.findOneAndUpdate(
       { userId },
-      { nutrients:nutrients},{dailyCalories:dailyCalories}
+      {
+        nutrients: nutrients,
+        dailyCalories: dailyCalories,
+      },
+      { new: true }
     )
     if (!user) {
       return res.status(404).json({ error: "Пользователь не найден" });
