@@ -418,7 +418,24 @@ app.get("/limits", async (req, res) => {
   }
 });
 
+app.post('/update-limits', async (req, res) => {
+  try {
+    const { userId,nutrients } = req.body;
 
+    // Обновляем лимиты для пользователя в базе данных
+    const user = await User.findOneAndUpdate(
+      { userId },
+      { nutrients}
+    )
+    if (!user) {
+      return res.status(404).json({ error: "Пользователь не найден" });
+    }
+    res.json({ message: "Nutrienst has been changed", nutrients:user.nutrients});
+  }
+catch (error) {
+  console.log(error.message)
+    res.status(500).json({ error: "Ошибка при обновлении лимитов" });
+  }})
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
