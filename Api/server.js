@@ -420,7 +420,9 @@ app.get("/limits", async (req, res) => {
 
 app.post('/update-limits', async (req, res) => {
   try {
-    const { userId,nutrients, dailyCalories } = req.body;
+    const { userId,nutrients} = req.body;
+    const { protein, fat, carbs } = nutrients;
+    const dailyCalories = protein * 4 + fat * 9 + carbs * 4; // Пример расчета калорийности
 
     // Обновляем лимиты для пользователя в базе данных
     const user = await User.findOneAndUpdate(
