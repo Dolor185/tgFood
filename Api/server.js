@@ -33,9 +33,7 @@ const apiSecret = process.env.API_SECRET;
 let accessToken = "";
 let tokenExpiration = 0;
 
-cron.schedule("* * * * *", async () => {
-  console.log("🕛 Запуск авто-сброса по периоду...");
-
+const performResetForAllUsers = async () => {
   const users = await User.find();
   const today = new Date();
 
@@ -44,7 +42,6 @@ cron.schedule("* * * * *", async () => {
     const daysSince = Math.floor((today - new Date(lastReset)) / (1000 * 60 * 60 * 24));
 
     if (daysSince >= user.period) {
-      // Получим сегодняшние данные перед сбросом
       const log = await NutrientLog.findOne({ userId: user.userId });
 
       if (log) {
@@ -56,20 +53,24 @@ cron.schedule("* * * * *", async () => {
         });
       }
 
-      // Сбросим данные
       await resetTotal(user.userId);
-
-      // Обновим lastReset
       user.lastReset = today;
       await user.save();
 
-      console.log(`✅ Данные пользователя ${user.userId} сброшены и сохранены в историю.`);
+      console.log(`✅ Сброшено для ${user.userId}`);
     }
   }
+};
 
-  console.log("✔️ Авто-сброс завершён");
+app.get("/manual-reset", async (req, res) => {
+  try {
+    await performResetForAllUsers(); // твоя логика сброса
+    res.send("✅ Сброс выполнен вручную");
+  } catch (err) {
+    console.error("Ошибка в /manual-reset:", err.message);
+    res.status(500).send("❌ Ошибка при сбросе");
+  }
 });
-
 app.post("/get-token", async (req, res) => {
   try {
     const tokenResponse = await axios.post(
