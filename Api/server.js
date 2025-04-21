@@ -291,33 +291,29 @@ app.post("/calculate-calories", async (req, res) => {
     console.log("Полученные данные:", req.body);
 
     const { userId, gender, weight, height, age, activityLevel, goal } = req.body;
+
     const dailyCalories = calculateCalories(gender, weight, height, age, activityLevel, goal);
 
-    let proteinCoef 
-    let fatCoef
+    let proteinCoef, fatCoef;
 
-    if(goal === "lose") {
-      proteinCoef = 2.3
-      fatCoef = 0.9
+    if (goal === "lose") {
+      proteinCoef = 2.3;
+      fatCoef = 0.9;
     }
 
-    if(goal === "gain") {
-      proteinCoef = 2.0
-      fatCoef = 1.1
+    if (goal === "gain") {
+      proteinCoef = 2.0;
+      fatCoef = 1.1;
     }
 
-    if(goal === "maintain") {
-      proteinCoef = 1.8
-      fatCoef = 1.0
+    if (goal === "maintain") {
+      proteinCoef = 1.8;
+      fatCoef = 1.0;
     }
 
-    const {protein, fat, carbs} = calculateNutrients(dailyCalories, proteinCoef, fatCoef, weight)
+    const { protein, fat, carbs } = calculateNutrients(dailyCalories, proteinCoef, fatCoef, weight);
 
-    const nutrients = {
-      protein: protein,
-      fat: fat,
-      carbs: carbs
-    };
+    const nutrients = { protein, fat, carbs };
 
     const user = new User({
       userId,
@@ -328,11 +324,19 @@ app.post("/calculate-calories", async (req, res) => {
       activityLevel,
       goal,
       dailyCalories,
-      nutrients
+      nutrients,
+      recommendedNutrients: nutrients, // ✅ сохраняем эталонные БЖУ
     });
 
     await user.save();
-    res.status(201).json({ message: "Данные пользователя сохранены", dailyCalories, nutrients,proteinCoef, fatCoef });
+
+    res.status(201).json({
+      message: "Данные пользователя сохранены",
+      dailyCalories,
+      nutrients,
+      proteinCoef,
+      fatCoef,
+    });
   } catch (error) {
     res.status(500).json({ error: "Ошибка при сохранении данных" });
   }
@@ -442,6 +446,33 @@ catch (error) {
   console.log(error.message)
     res.status(500).json({ error: "Ошибка при обновлении лимитов" });
   }})
+
+  app.post("/restore-nutrients", async (req, res) => {
+    try {
+      const { userId } = req.body;
+  
+      const user = await User.findOne({ userId });
+      if (!user) {
+        return res.status(404).json({ error: "Пользователь не найден" });
+      }
+  
+      if (!user.recommendedNutrients) {
+        return res.status(400).json({ error: "Нет рекомендованных значений для восстановления" });
+      }
+  
+      user.nutrients = user.recommendedNutrients;
+      await user.save();
+  
+      res.status(200).json({
+        message: "Значения БЖУ восстановлены",
+        nutrients: user.nutrients,
+      });
+    } catch (error) {
+      console.error("Ошибка при восстановлении БЖУ:", error.message);
+      res.status(500).json({ error: "Ошибка сервера" });
+    }
+  });
+  
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
