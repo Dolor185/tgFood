@@ -45,7 +45,7 @@ cron.schedule("* * * * *", async () => {
 
     if (daysSince >= user.period) {
       // Получим сегодняшние данные перед сбросом
-      const log = await Log.findOne({ userId: user.userId });
+      const log = await NutrientLog.findOne({ userId: user.userId });
 
       if (log) {
         await FoodHistory.create({
