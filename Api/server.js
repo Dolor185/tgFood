@@ -458,9 +458,14 @@ catch (error) {
   
       if (!user.recommendedNutrients) {
         return res.status(400).json({ error: "Нет рекомендованных значений для восстановления" });
+
       }
+
+      const{protein, fat, carbs} = user.recommendedNutrients
+      const dailyCalories = protein * 4 + fat * 9 + carbs * 4; // Пример расчета калорийности
   
       user.nutrients = user.recommendedNutrients;
+      user.dailyCalories = dailyCalories; // Обновляем калории
       await user.save();
   
       res.status(200).json({
