@@ -1,6 +1,8 @@
 require("dotenv").config();
 const axios = require("axios");
 const User = require("../DB/User");
+const NutrientLog = require("../DB/NutrientLog");
+const FoodHistory = require("../DB/FoodHistory");
 const qs = require("qs");
 const express = require("express");
 const cors = require("cors");
@@ -31,19 +33,41 @@ const apiSecret = process.env.API_SECRET;
 let accessToken = "";
 let tokenExpiration = 0;
 
-cron.schedule("0 0 * * *", async () => {
-  try {
-    console.log("Running resetTotal at midnight");
+cron.schedule("* * * * *", async () => {
+  console.log("🕛 Запуск авто-сброса по периоду...");
 
-    const users = await NutrientLog.distinct("userId");
-    for (const userId of users) {
-      await resetTotal(userId);
+  const users = await User.find();
+  const today = new Date();
+
+  for (const user of users) {
+    const lastReset = user.lastReset || user.createdAt || today;
+    const daysSince = Math.floor((today - new Date(lastReset)) / (1000 * 60 * 60 * 24));
+
+    if (daysSince >= user.period) {
+      // Получим сегодняшние данные перед сбросом
+      const log = await Log.findOne({ userId: user.userId });
+
+      if (log) {
+        await FoodHistory.create({
+          userId: user.userId,
+          date: today,
+          products: log.products || [],
+          total: log.totalNutrients || {},
+        });
+      }
+
+      // Сбросим данные
+      await resetTotal(user.userId);
+
+      // Обновим lastReset
+      user.lastReset = today;
+      await user.save();
+
+      console.log(`✅ Данные пользователя ${user.userId} сброшены и сохранены в историю.`);
     }
-
-    console.log("resetTotal completed for all users");
-  } catch (error) {
-    console.error("Error running resetTotal:", error.message);
   }
+
+  console.log("✔️ Авто-сброс завершён");
 });
 
 app.post("/get-token", async (req, res) => {
@@ -474,6 +498,25 @@ catch (error) {
       });
     } catch (error) {
       console.error("Ошибка при восстановлении БЖУ:", error.message);
+      res.status(500).json({ error: "Ошибка сервера" });
+    }
+  });
+
+  app.get("/history", async (req, res) => {
+    const { userId } = req.query;
+  
+    if (!userId) {
+      return res.status(400).json({ error: "Не указан userId" });
+    }
+  
+    try {
+      const history = await FoodHistory.find({ userId })
+        .sort({ date: -1 })         // последние записи сверху
+        .limit(7);                   // только последние 7 дней
+  
+      res.status(200).json({ history });
+    } catch (error) {
+      console.error("Ошибка при получении истории:", error.message);
       res.status(500).json({ error: "Ошибка сервера" });
     }
   });
