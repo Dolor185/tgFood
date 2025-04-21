@@ -73,6 +73,45 @@ app.get("/manual-reset", async (req, res) => {
     res.status(500).send("❌ Ошибка при сбросе");
   }
 });
+app.get("/debug-reset", async (req, res) => {
+  try {
+    const users = await User.find();
+    const today = new Date();
+    const debugResults = [];
+
+    for (const user of users) {
+      const log = await NutrientLog.findOne({ userId: user.userId });
+
+      let historyEntry = null;
+      if (log) {
+        historyEntry = await FoodHistory.create({
+          userId: user.userId,
+          date: today,
+          products: log.products || [],
+          total: log.totalNutrients || {},
+        });
+      }
+
+      await resetTotal(user.userId);
+      user.lastReset = today;
+      await user.save();
+
+      debugResults.push({
+        userId: user.userId,
+        productsLogged: log?.products?.length || 0,
+        historySaved: !!historyEntry,
+      });
+    }
+
+    res.json({
+      status: "✅ Сброс выполнен",
+      result: debugResults,
+    });
+  } catch (error) {
+    console.error("❌ Ошибка в /debug-reset:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 app.post("/get-token", async (req, res) => {
   try {
     const tokenResponse = await axios.post(
