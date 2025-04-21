@@ -43,8 +43,10 @@ const performResetForAllUsers = async () => {
 
     if (daysSince >= user.period) {
       const log = await NutrientLog.findOne({ userId: user.userId });
+      console.log("🧪 NutrientLog для пользователя", user.userId, log);
 
       if (log) {
+        console.log("🟡 Записываю в FoodHistory")
         await FoodHistory.create({
           userId: user.userId,
           date: today,
