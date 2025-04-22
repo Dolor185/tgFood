@@ -564,7 +564,7 @@ catch (error) {
     }
   });
 
-  app,post('/add-custom', async (req, res) =>{
+  app.post('/add-custom', async (req, res) =>{
     const {userId, name, calories, protein, fat, carbs} = req.body
 
     try {
