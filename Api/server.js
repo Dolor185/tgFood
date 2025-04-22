@@ -3,6 +3,7 @@ const axios = require("axios");
 const User = require("../DB/User");
 const NutrientLog = require("../DB/NutrientLog");
 const FoodHistory = require("../DB/FoodHistory");
+const CustomProduct = require("../DB/CustomProduct");
 const qs = require("qs");
 const express = require("express");
 const cors = require("cors");
@@ -562,6 +563,24 @@ catch (error) {
       res.status(500).json({ error: "Ошибка сервера" });
     }
   });
+
+  app,post('/add-custom', async (req, res) =>{
+    const {userId, name, calories, protein, fat, carbs} = req.body
+
+    try {
+      return new CustomProduct({
+        userId, 
+        name,
+        calories,
+        protein,
+        fat,
+        carbs,
+      });
+    } catch (error) {
+      console.error("Ошибка при добавлении кастомного продукта:", error.message);
+      res.status(500).json({ error: "Ошибка сервера" });
+    }
+  })
   
 const startServer = () => {
   app.listen(3000, () => {
