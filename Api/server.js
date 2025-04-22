@@ -564,24 +564,27 @@ catch (error) {
     }
   });
 
-  app.post('/add-custom', async (req, res) =>{
-    const {userId,product} = req.body
+  app.post('/add-custom', async (req, res) => {
+    const { userId, product } = req.body;
     const { name, calories, protein, fat, carbs } = product;
-
+  
     try {
-      return new CustomProduct({
-        userId, 
+      await CustomProduct.create({
+        userId,
         name,
         calories,
         protein,
         fat,
         carbs,
       });
+  
+      res.status(201).json({ message: "Продукт добавлен" });
     } catch (error) {
       console.error("Ошибка при добавлении кастомного продукта:", error.message);
       res.status(500).json({ error: "Ошибка сервера" });
     }
-  })
+  });
+  
   
 const startServer = () => {
   app.listen(3000, () => {
