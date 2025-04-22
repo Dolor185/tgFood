@@ -565,7 +565,8 @@ catch (error) {
   });
 
   app.post('/add-custom', async (req, res) =>{
-    const {userId, name, calories, protein, fat, carbs} = req.body
+    const {userId,product} = req.body
+    const { name, calories, protein, fat, carbs } = product;
 
     try {
       return new CustomProduct({
