@@ -583,8 +583,20 @@ catch (error) {
   
   
   app.get('/custom-products', async(req, res)=>{
-    
-  })
+    const {userId } = req.query;
+    try {
+      const user = await User.findOne({ userId });
+      if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+      const products  = user.customProducts;
+      res.status(200).json({ products });
+  }
+  catch(erroe) {
+    console.error("Ошибка при получении кастомных продуктов:", error.message);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }}
+)
+
+
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
