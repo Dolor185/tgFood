@@ -14,10 +14,7 @@ const {
   addAndUpdate,
   findTotal,
   resetTotal,
-  addCustom,
-  findCustom,
-  customsList,
-  deleteCustom,
+
   findAndDelete,
   isFirstLogin
 } = require("../DB/dbHooks");
