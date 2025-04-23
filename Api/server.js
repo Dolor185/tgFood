@@ -566,17 +566,17 @@ catch (error) {
 
   app.post('/add-custom', async (req, res) => {
     const { userId, product } = req.body;
-    const { name, calories, protein, fat, carbs } = product;
   
     try {
-      await CustomProduct.create({
-        userId,
-        name,
-        calories,
-        protein,
-        fat,
-        carbs,
+      const user = await User.findOne({ userId });
+      if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+  
+      user.customProducts.push({
+        ...product,
+        createdAt: new Date(),
       });
+  
+      await user.save();
   
       res.status(201).json({ message: "Продукт добавлен" });
     } catch (error) {
@@ -586,6 +586,9 @@ catch (error) {
   });
   
   
+  app.get('/custom-products', async(req, res)=>{
+    
+  })
 const startServer = () => {
   app.listen(3000, () => {
     console.log("Proxy server is running on port 3000");
