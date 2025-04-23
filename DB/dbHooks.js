@@ -1,6 +1,6 @@
 const NutrientLog = require("./NutrientLog");
 const User = require("./User");
-const CustomProduct = require("./CustomProduct");
+
 
 const addAndUpdate = async (userId, nutrients, products) => {
   if (
@@ -62,27 +62,6 @@ const resetTotal = (userId) => {
   );
 };
 
-const addCustom = (userId, name, calories, protein, fat, carbs) => {
-  return new CustomProduct({
-    userId, // Привязываем продукт к пользователю
-    name,
-    calories,
-    protein,
-    fat,
-    carbs,
-  });
-};
-
-const findCustom = (productId) => {
-  return CustomProduct.findById(productId);
-};
-const customsList = () => {
-  return CustomProduct.find();
-};
-
-const deleteCustom = (productId) => {
-  return CustomProduct.deleteOne({ _id: productId });
-};
 
 const findAndDelete = async (userId, productId) => {
   // Найти продукт для удаления
@@ -122,10 +101,6 @@ module.exports = {
   addAndUpdate,
   findTotal,
   resetTotal,
-  addCustom,
-  findCustom,
-  customsList,
-  deleteCustom,
   isFirstLogin,
   findAndDelete,
 };

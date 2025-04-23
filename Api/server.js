@@ -3,7 +3,6 @@ const axios = require("axios");
 const User = require("../DB/User");
 const NutrientLog = require("../DB/NutrientLog");
 const FoodHistory = require("../DB/FoodHistory");
-const CustomProduct = require("../DB/CustomProduct");
 const qs = require("qs");
 const express = require("express");
 const cors = require("cors");
