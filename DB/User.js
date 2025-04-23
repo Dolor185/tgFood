@@ -24,7 +24,17 @@ const userSchema = new mongoose.Schema({
     carbs: { type: Number },
   },
   period: { type: Number, default: 1 },
-  lastReset: { type: Date, default: Date.now }, // ✅ новое поле
+  lastReset: { type: Date, default: Date.now },
+  customProducts: [
+    {
+      name: String,
+      calories: Number,
+      protein: Number,
+      fat: Number,
+      carbs: Number,
+      createdAt: { type: Date, default: Date.now },
+    }
+  ] // ✅ новое поле
 });
 
 const User = mongoose.model("User", userSchema);
