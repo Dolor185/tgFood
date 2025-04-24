@@ -63,22 +63,24 @@ const resetTotal = (userId) => {
 };
 
 
-const findAndDelete = async (userId, productId) => {
-  // Найти продукт для удаления
+const findAndDelete = async (userId, entryId) => {
   const log = await NutrientLog.findOne({ userId });
+
+  if (!log) throw new Error("Лог пользователя не найден");
+
   const productToDelete = log.products.find(
-    (product) => product.id === Number(productId)
+    (product) => product.entryId === entryId
   );
 
   if (!productToDelete) {
     throw new Error("Продукт не найден");
   }
 
-  // Удалить продукт и обновить totalNutrients
+  // Удаляем продукт по entryId и вычитаем его нутриенты
   return NutrientLog.updateOne(
     { userId },
     {
-      $pull: { products: { id: Number(productId) } },
+      $pull: { products: { entryId } },
       $inc: {
         "totalNutrients.calories": -productToDelete.nutrients.calories,
         "totalNutrients.protein": -productToDelete.nutrients.protein,
@@ -88,6 +90,7 @@ const findAndDelete = async (userId, productId) => {
     }
   );
 };
+
 
 const isFirstLogin = async (userId) => {
   const log = await User.findOne({ userId });
