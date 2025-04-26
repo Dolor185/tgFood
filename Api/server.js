@@ -552,11 +552,29 @@ catch (error) {
     }
   
     try {
-      const history = await FoodHistory.find({ userId })
-        .sort({ date: -1 })         // последние записи сверху
-        .limit(7);                   // только последние 7 дней
+      const foodHistory = await FoodHistory.findOne({ userId });
   
-      res.status(200).json({ history });
+      if (!foodHistory || !foodHistory.history) {
+        return res.status(200).json({ history: [] }); // Нет истории = пустой массив
+      }
+  
+      const now = new Date();
+      const last7Days = [];
+  
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(now);
+        date.setDate(now.getDate() - i);
+        const dateKey = date.toISOString().slice(0, 10); // например, "2024-04-24"
+  
+        if (foodHistory.history.has(dateKey)) {
+          last7Days.push({
+            date: dateKey,
+            ...foodHistory.history.get(dateKey), // продукты + total
+          });
+        }
+      }
+  
+      res.status(200).json({ history: last7Days });
     } catch (error) {
       console.error("Ошибка при получении истории:", error.message);
       res.status(500).json({ error: "Ошибка сервера" });
