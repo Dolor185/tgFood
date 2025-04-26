@@ -33,6 +33,7 @@ let tokenExpiration = 0;
 const performResetForAllUsers = async () => {
   const users = await User.find();
   const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10); // "2024-04-24"
 
   for (const user of users) {
     const lastReset = user.lastReset || user.createdAt || today;
@@ -42,15 +43,18 @@ const performResetForAllUsers = async () => {
       const log = await NutrientLog.findOne({ userId: user.userId });
       console.log("🧪 NutrientLog для пользователя", user.userId, log);
 
-      if (log) {
-        console.log("🟡 Записываю в FoodHistory")
-        await FoodHistory.create({
-          userId: user.userId,
-          date: today,
-          products: log.products || [],
-          total: log.totalNutrients || {},
-        });
-      }
+      const entry = {
+        total: log?.totalNutrients || { calories: 0, protein: 0, fat: 0, carbs: 0 },
+        products: log?.products || [],
+      };
+
+      console.log("🟡 Записываю в UserHistory");
+
+      await FoodHistory.updateOne(
+        { userId: user.userId },
+        { $set: { [`history.${todayKey}`]: entry } },
+        { upsert: true }
+      );
 
       await resetTotal(user.userId);
       user.lastReset = today;
@@ -60,7 +64,6 @@ const performResetForAllUsers = async () => {
     }
   }
 };
-
 app.get("/manual-reset", async (req, res) => {
   try {
     await performResetForAllUsers(); // твоя логика сброса
