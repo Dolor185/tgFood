@@ -2,7 +2,7 @@ const NutrientLog = require("./NutrientLog");
 const User = require("./User");
 
 
-const addAndUpdate = async (userId, nutrients, products) => {
+const addAndUpdate = async (userId, date, meal, nutrients, product) => {
   if (
     !nutrients ||
     typeof nutrients.calories !== "number" ||
@@ -12,30 +12,32 @@ const addAndUpdate = async (userId, nutrients, products) => {
   ) {
     throw new TypeError("Неверный объект nutrients");
   }
+
   if (
-    !products ||
-    typeof products.name !== "string" ||
-    typeof products.amount !== "number" ||
-    typeof products.nutrients !== "object"
+    !product ||
+    typeof product.name !== "string" ||
+    typeof product.amount !== "number" ||
+    typeof product.nutrients !== "object"
   ) {
-    throw new TypeError("Неверный объект product");
+    throw new TypeError("Неверный объект продукта");
   }
 
-  const result = await NutrientLog.findOneAndUpdate(
-    { userId }, // Поиск по userId
-    {
-      $inc: {
-        // Увеличиваем значения полей нутриентов
-        "totalNutrients.calories": nutrients.calories,
-        "totalNutrients.protein": nutrients.protein,
-        "totalNutrients.fat": nutrients.fat,
-        "totalNutrients.carbs": nutrients.carbs,
-      },
-      $push: {
-        products: products,
-      },
+  const update = {
+    $inc: {
+      "totalNutrients.calories": nutrients.calories,
+      "totalNutrients.protein": nutrients.protein,
+      "totalNutrients.fat": nutrients.fat,
+      "totalNutrients.carbs": nutrients.carbs,
     },
-    { upsert: true, new: true, returnDocument: "after" } // Создать новую запись, если она не найдена
+    $push: {
+      [`meals.${meal}`]: product,
+    },
+  };
+
+  const result = await NutrientLog.findOneAndUpdate(
+    { userId, date },
+    update,
+    { upsert: true, new: true }
   );
 
   return result;

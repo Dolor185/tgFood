@@ -244,8 +244,8 @@ app.get("/food-details", async (req, res) => {
   }
 });
 
-app.get("/add-update", async (req, res) => {
-  const { nutrients, user, product } = req.query;
+app.post("/add-update", async (req, res) => {
+  const { nutrients, user, product, date, meal } = req.body;
 
   try {
     // Проверяем, является ли nutrients строкой
@@ -256,7 +256,7 @@ app.get("/add-update", async (req, res) => {
     const parsedNutrients = JSON.parse(nutrients);
     const parsedProducts = JSON.parse(product);
 
-    const result = await addAndUpdate(user, parsedNutrients, parsedProducts);
+    const result = await addAndUpdate(user, date, meal, parsedNutrients, parsedProducts);
 
     res.status(200).json({ message: "Nutrients updated successfully" });
   } catch (error) {
