@@ -248,15 +248,10 @@ app.post("/add-update", async (req, res) => {
   const { nutrients, user, product, date, meal } = req.body;
 
   try {
-    // Проверяем, является ли nutrients строкой
-    if (typeof nutrients !== "string") {
-      throw new TypeError("Nutrients must be a valid JSON string");
-    }
+  
 
-    const parsedNutrients = JSON.parse(nutrients);
-    const parsedProducts = JSON.parse(product);
 
-    const result = await addAndUpdate(user, date, meal, parsedNutrients, parsedProducts);
+    const result = await addAndUpdate(user, date, meal, nutrients, product);
 
     res.status(200).json({ message: "Nutrients updated successfully" });
   } catch (error) {
