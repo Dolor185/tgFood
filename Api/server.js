@@ -261,9 +261,10 @@ app.post("/add-update", async (req, res) => {
 });
 
 app.get("/check-nutrients", async (req, res) => {
-  const { user } = req.query;
+  const { user, date } = req.query;
+  
   try {
-    const result = await findTotal(user);
+    const result = await findTotal(Number(user), date);
 
     res.status(200).json(result);
   } catch (error) {

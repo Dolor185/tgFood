@@ -43,10 +43,9 @@ const addAndUpdate = async (userId, date, meal, nutrients, product) => {
   return result;
 };
 
-const findTotal = (userId) => {
-  return NutrientLog.find({ userId }).sort({ date: -1 }).limit(1);
+const findTotal = (userId, date) => {
+  return NutrientLog.findOne({ userId, date });
 };
-
 const resetTotal = (userId) => {
   return NutrientLog.updateMany(
     { userId },
