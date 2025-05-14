@@ -86,9 +86,9 @@ const findAndDelete = async (userId, entryId, date) => {
 
   // Удаляем продукт по entryId и вычитаем его нутриенты
   return NutrientLog.updateOne(
-    { userId },
+    { userId, date},
     {
-      $pull: { products: { entryId } },
+      $pull: { [`meals.${mealKey}`]: { entryId } },
       $inc: {
         "totalNutrients.calories": -productToDelete.nutrients.calories,
         "totalNutrients.protein": -productToDelete.nutrients.protein,
