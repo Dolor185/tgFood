@@ -69,24 +69,27 @@ const findAndDelete = async (userId, entryId, date) => {
 
   if (!log) throw new Error("Лог пользователя не найден");
 
-  const allMeals = [
-    ...log.meals.Breakfast,
-    ...log.meals.Lunch,
-    ...log.meals.Dinner,
-    ...log.meals.Snacks,
-  ];
+  // Определяем, в каком приёме пищи лежит продукт
+  let mealKey = null;
+  let productToDelete = null;
 
-  const productToDelete = allMeals.find(
-    (product) => product.entryId === entryId
-  );
+  for (const key of ["Breakfast", "Lunch", "Dinner", "Snacks"]) {
+    const meal = log.meals[key];
+    const found = meal.find((p) => p.entryId === entryId);
+    if (found) {
+      mealKey = key;
+      productToDelete = found;
+      break;
+    }
+  }
 
   if (!productToDelete) {
     throw new Error("Продукт не найден");
   }
 
-  // Удаляем продукт по entryId и вычитаем его нутриенты
+  // Удаляем и обновляем нутриенты
   return NutrientLog.updateOne(
-    { userId, date},
+    { userId, date },
     {
       $pull: { [`meals.${mealKey}`]: { entryId } },
       $inc: {
@@ -98,6 +101,7 @@ const findAndDelete = async (userId, entryId, date) => {
     }
   );
 };
+
 
 
 const isFirstLogin = async (userId) => {
