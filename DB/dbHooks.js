@@ -69,7 +69,14 @@ const findAndDelete = async (userId, entryId, date) => {
 
   if (!log) throw new Error("Лог пользователя не найден");
 
-  const productToDelete = log.products.find(
+  const allMeals = [
+    ...log.meals.Breakfast,
+    ...log.meals.Lunch,
+    ...log.meals.Dinner,
+    ...log.meals.Snacks,
+  ];
+
+  const productToDelete = allMeals.find(
     (product) => product.entryId === entryId
   );
 
