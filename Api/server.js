@@ -286,10 +286,10 @@ app.get("/reset-nutrients", async (req, res) => {
 });
 
 app.get("/delete-product", async (req, res) => {
-  const { user, entryId } = req.query;
+  const { user, entryId, date } = req.query;
 
   try {
-    const result = await findAndDelete(user, entryId);
+    const result = await findAndDelete(user, entryId, date);
     if (result.modifiedCount === 0) {
       return res
         .status(404)

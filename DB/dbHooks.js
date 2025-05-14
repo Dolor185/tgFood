@@ -64,8 +64,8 @@ const resetTotal = (userId) => {
 };
 
 
-const findAndDelete = async (userId, entryId) => {
-  const log = await NutrientLog.findOne({ userId });
+const findAndDelete = async (userId, entryId, date) => {
+  const log = await NutrientLog.findOne({ userId, date });
 
   if (!log) throw new Error("Лог пользователя не найден");
 
