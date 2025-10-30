@@ -391,26 +391,26 @@ bot.onText(/\/addCustome/, (msg) => {
   });
 });
 
-bot.onText(/\/Customs/, async (msg) => {
-  const customs = await customsList();
-  isCustomsProducts = true;
-  if (customs.length === 0) {
-    bot.sendMessage(msg.chat.id, "У вас нет сохраненных продуктов.");
-  } else {
-    const buttons = customs.map((product) => ({
-      text: `${product.name} (КБЖУ: ${product.calories} ккал, ${product.protein} г белков, ${product.fat} г жиров, ${product.carbs} г углеводов)`,
-      callback_data: `cus_${product._id}`,
-    }));
+// bot.onText(/\/Customs/, async (msg) => {
+//   const customs = await customsList();
+//   isCustomsProducts = true;
+//   if (customs.length === 0) {
+//     bot.sendMessage(msg.chat.id, "У вас нет сохраненных продуктов.");
+//   } else {
+//     const buttons = customs.map((product) => ({
+//       text: `${product.name} (КБЖУ: ${product.calories} ккал, ${product.protein} г белков, ${product.fat} г жиров, ${product.carbs} г углеводов)`,
+//       callback_data: `cus_${product._id}`,
+//     }));
 
-    const replyMarkup = {
-      inline_keyboard: buttons.map((button) => [button]),
-    };
+//     const replyMarkup = {
+//       inline_keyboard: buttons.map((button) => [button]),
+//     };
 
-    bot.sendMessage(msg.chat.id, "Ваши избранные продукты:", {
-      reply_markup: replyMarkup,
-    });
-  }
-});
+//     bot.sendMessage(msg.chat.id, "Ваши избранные продукты:", {
+//       reply_markup: replyMarkup,
+//     });
+//   }
+// });
 // обработка событий при выборе продуктов из избранных
 bot.on("callback_query", async (callbackQuery) => {
   const msg = callbackQuery.message;

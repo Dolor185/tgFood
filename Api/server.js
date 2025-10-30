@@ -3,6 +3,7 @@ const axios = require("axios");
 const User = require("../DB/User");
 const NutrientLog = require("../DB/NutrientLog");
 const FoodHistory = require("../DB/FoodHistory");
+const BarCodeProduct = require("../DB/BarCodeProduct");
 const qs = require("qs");
 const express = require("express");
 const cors = require("cors");
@@ -303,34 +304,51 @@ app.get("/delete-product", async (req, res) => {
 });
 
 app.get("/getByBarcode", async (req, res) => {
-  const { barcode } = req.query;
+  const barcode = String(req.query.barcode || "").trim();
+  if (!barcode) {
+    return res.status(400).json({ error: "barcode is required" });
+  }
+
   const url = "https://platform.fatsecret.com/rest/food/barcode/find-by-id/v1";
+
   try {
     await checkAndRefreshToken();
 
-    const apiResponse = await axios.get(
-      url,
-
-      {
-        params: {
-          barcode: barcode,
-          format: "json", // Указываем формат ответа
-        },
+    try {
+      const apiResponse = await axios.get(url, {
+        params: { barcode, format: "json" },
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
         },
+      });
+
+      const data = apiResponse.data;
+      if (data && Object.keys(data).length > 0) {
+        return res.status(200).json(data);
       }
-    );
-    res.json(apiResponse.data);
+    } catch (err) {
+      if (!(err.response && err.response.status === 404)) {
+        console.error(
+          "FatSecret error:",
+          err.response ? err.response.data : err.message
+        );
+        return res.status(502).json({ error: "Upstream FatSecret error" });
+      }
+    }
+
+    const localProduct = await BarCodeProduct.findOne({ barcode });
+    if (localProduct) {
+      return res.status(200).json({ food: localProduct, source: "local" });
+    }
+
+    return res.status(404).json({ message: "Продукт не найден" });
   } catch (error) {
-    console.error(
-      "Error fetching food details:",
-      error.response ? error.response.data : error.message
-    );
-    res.status(500).json({ error: error.message });
+    console.error("Error in /getByBarcode:", error.message || error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 app.get("/first-open", async (req, res) => {
   const { user } = req.query;
@@ -629,6 +647,21 @@ app.delete('/delete-custom', async (req, res) => {
 }
 );
 
+app.post('/add-barcode-product', async (req, res) => {
+const {barcode, name, nutrients, metric_serving_unit} = req.body;
+try{
+  const barcodeProduct = new BarCodeProduct({
+    barcode,
+    name,
+    metric_serving_unit,
+    nutrients});
+  await barcodeProduct.save();
+  res.status(201).json({ message: "Продукт добавлен", product: barcodeProduct });
+} catch (error) {
+  console.error("Ошибка при добавлении продукта с штрихкодом:", error.message);
+  res.status(500).json({ error: "Ошибка сервера" });
+}
+});
 
 const startServer = () => {
   app.listen(3000, () => {
