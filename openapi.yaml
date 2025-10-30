@@ -1,0 +1,540 @@
+openapi: 3.0.3
+info:
+  title: FoodTracker (current Node API draft)
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000
+    description: Local dev (current Node server)
+
+tags:
+  - name: External/FatSecret
+  - name: Nutrients
+  - name: Products
+  - name: User
+  - name: History
+  - name: Admin
+
+paths:
+  /food-search:
+    get:
+      tags: [External/FatSecret]
+      summary: Search foods via FatSecret
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string }
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: OK (FatSecret proxy response)
+          content:
+            application/json:
+              schema: { type: object }
+        "500": { description: Upstream/API error }
+
+  /food-details:
+    get:
+      tags: [External/FatSecret]
+      summary: Get food details via FatSecret
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK (FatSecret proxy response)
+          content:
+            application/json:
+              schema: { type: object }
+        "500": { description: Upstream/API error }
+
+  /getByBarcode:
+    get:
+      tags: [External/FatSecret]
+      summary: Find food by barcode via FatSecret
+      parameters:
+        - name: barcode
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK (FatSecret proxy response)
+          content:
+            application/json:
+              schema: { type: object }
+        "500": { description: Upstream/API error }
+
+  /add-update:
+    post:
+      tags: [Nutrients]
+      summary: Add a product entry and update totals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nutrients, user, product, date, meal]
+              properties:
+                nutrients:
+                  $ref: "#/components/schemas/Macros"
+                user:
+                  oneOf:
+                    - type: string
+                    - type: integer
+                product:
+                  $ref: "#/components/schemas/ProductBrief"
+                date:
+                  type: string
+                  description: ISO date (YYYY-MM-DD) expected by DB layer
+                meal:
+                  type: string
+                  description: Meal slot (free-string in current impl)
+      responses:
+        "200":
+          description: Updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    { type: string, example: Nutrients updated successfully }
+        "500": { description: Server error }
+
+  /check-nutrients:
+    get:
+      tags: [Nutrients]
+      summary: Get current total nutrients for user on date
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, example: "2025-10-12" }
+      responses:
+        "200":
+          description: Current totals (shape returned by findTotal)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckNutrientsResponse"
+        "500": { description: Server error }
+
+  /reset-nutrients:
+    get:
+      tags: [Nutrients]
+      summary: Reset current nutrient totals for user
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Reset done
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    { type: string, example: Nutrients reset successfully }
+        "500": { description: Server error }
+
+  /delete-product:
+    get:
+      tags: [Nutrients]
+      summary: Delete a product entry by entryId for a date
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: entryId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: date
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted (or result info)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  result: { type: object }
+        "404": { description: Not found or not deleted }
+        "500": { description: Server error }
+
+  /first-open:
+    get:
+      tags: [User]
+      summary: Check first open / create initial structures
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: User nutrient log / first open info
+          content:
+            application/json:
+              schema:
+                type: object
+        "500": { description: Server error }
+
+  /calculate-calories:
+    post:
+      tags: [User]
+      summary: Calculate daily calories and base macros; create user record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                [userId, gender, weight, height, age, activityLevel, goal]
+              properties:
+                userId: { type: integer }
+                gender: { type: string, enum: [male, female] }
+                weight: { type: number }
+                height: { type: number }
+                age: { type: integer }
+                activityLevel: { type: string }
+                goal: { type: string, enum: [lose, gain, maintain] }
+      responses:
+        "201":
+          description: Saved with calculated targets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  dailyCalories: { type: number }
+                  nutrients: { $ref: "#/components/schemas/Macros" }
+                  proteinCoef: { type: number, nullable: true }
+                  fatCoef: { type: number, nullable: true }
+        "500": { description: Server error }
+
+  /update-coefficients:
+    post:
+      tags: [User]
+      summary: Update protein/fat coefficients and recompute targets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, proteinCoef, fatCoef]
+              properties:
+                userId: { type: integer }
+                proteinCoef: { type: number }
+                fatCoef: { type: number }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyCalories: { type: number }
+                  nutrients: { $ref: "#/components/schemas/Macros" }
+        "404": { description: User not found }
+        "500": { description: Server error }
+
+  /update-period:
+    post:
+      tags: [User]
+      summary: Update aggregation period (1, 3, 7 days)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, period]
+              properties:
+                userId: { type: integer }
+                period: { type: integer, enum: [1, 3, 7] }
+      responses:
+        "200":
+          description: Period updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  period: { type: integer }
+        "404": { description: User not found }
+        "400": { description: Invalid period }
+        "500": { description: Server error }
+
+  /limits:
+    get:
+      tags: [User]
+      summary: Get user limits scaled by period
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Scaled nutrient limits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitsResponse"
+        "404": { description: User not found }
+        "500": { description: Server error }
+
+  /update-limits:
+    post:
+      tags: [User]
+      summary: Override current target nutrients (recompute dailyCalories)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, nutrients]
+              properties:
+                userId: { type: integer }
+                nutrients: { $ref: "#/components/schemas/Macros" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  nutrients: { $ref: "#/components/schemas/Macros" }
+        "404": { description: User not found }
+        "500": { description: Server error }
+
+  /restore-nutrients:
+    post:
+      tags: [User]
+      summary: Restore nutrients from recommendedNutrients
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: integer }
+      responses:
+        "200":
+          description: Restored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  nutrients: { $ref: "#/components/schemas/Macros" }
+        "404": { description: User not found }
+        "400": { description: No recommended values }
+        "500": { description: Server error }
+
+  /history:
+    get:
+      tags: [History]
+      summary: Get last 7 days history snapshot
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: History array (last 7 days)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HistoryDay"
+        "500": { description: Server error }
+
+  /add-custom:
+    post:
+      tags: [Products]
+      summary: Add a custom product to user library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, product]
+              properties:
+                userId: { type: integer }
+                product: { $ref: "#/components/schemas/Product" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "404": { description: User not found }
+        "500": { description: Server error }
+
+  /custom-products:
+    get:
+      tags: [Products]
+      summary: Get user's custom products
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items: { $ref: "#/components/schemas/Product" }
+        "404": { description: User not found }
+        "500": { description: Server error }
+
+  /delete-custom:
+    delete:
+      tags: [Products]
+      summary: Delete a custom product by productId (body-based delete)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, productId]
+              properties:
+                userId: { type: integer }
+                productId: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "404": { description: User not found or product not found }
+        "500": { description: Server error }
+
+  /manual-reset:
+    get:
+      tags: [Admin]
+      summary: Force perform reset for all users (admin/debug)
+      responses:
+        "200": { description: OK }
+        "500": { description: Server error }
+
+  /debug-reset:
+    get:
+      tags: [Admin]
+      summary: "Debug: snapshot history and reset for all users"
+      responses:
+        "200":
+          description: JSON debug result
+          content:
+            application/json:
+              schema:
+                type: object
+        "500": { description: Server error }
+
+components:
+  schemas:
+    Macros:
+      type: object
+      required: [protein, fat, carbs]
+      properties:
+        calories: { type: number, description: Optional; computed in places }
+        protein: { type: number }
+        fat: { type: number }
+        carbs: { type: number }
+
+    ProductBrief:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        name: { type: string }
+        brand: { type: string, nullable: true }
+        barcode: { type: string, nullable: true }
+        macros: { $ref: "#/components/schemas/Macros" }
+        weight:
+          {
+            type: number,
+            nullable: true,
+            description: "If present in entry payload",
+          }
+
+    Product:
+      allOf:
+        - $ref: "#/components/schemas/ProductBrief"
+        - type: object
+          properties:
+            _id: { type: string, nullable: true }
+            createdAt: { type: string, format: date-time, nullable: true }
+
+    HistoryDay:
+      type: object
+      properties:
+        date: { type: string, example: "2025-10-12" }
+        total: { $ref: "#/components/schemas/Macros" }
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductBrief"
+
+    LimitsResponse:
+      type: object
+      properties:
+        protein: { type: number }
+        fat: { type: number }
+        carbs: { type: number }
+        dailyCalories: { type: number }
+
+    CheckNutrientsResponse:
+      type: object
+      description: "Whatever findTotal returns (current Node shape). Adjust later if needed."
+      additionalProperties: true
