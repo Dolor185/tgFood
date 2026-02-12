@@ -178,7 +178,6 @@ const checkAndRefreshToken = async () => {
   }
 };
 
-// Поиск продуктов
 app.get("/food-search", async (req, res) => {
   const { query, page } = req.query;
   const url = `https://platform.fatsecret.com/rest/foods/search/v3`;
@@ -305,14 +304,14 @@ app.get("/delete-product", async (req, res) => {
 
 app.get("/getByBarcode", async (req, res) => {
   const barcode = String(req.query.barcode || "").trim();
-  if (!barcode) {
-    return res.status(400).json({ error: "barcode is required" });
-  }
+  if (!barcode) return res.status(400).json({ error: "barcode is required" });
 
   const url = "https://platform.fatsecret.com/rest/food/barcode/find-by-id/v1";
 
   try {
     await checkAndRefreshToken();
+
+    let fatData = null;
 
     try {
       const apiResponse = await axios.get(url, {
@@ -322,19 +321,21 @@ app.get("/getByBarcode", async (req, res) => {
           Accept: "application/json",
         },
       });
-
-      const data = apiResponse.data;
-      if (data && Object.keys(data).length > 0) {
-        return res.status(200).json(data);
-      }
+      fatData = apiResponse.data;
     } catch (err) {
       if (!(err.response && err.response.status === 404)) {
-        console.error(
-          "FatSecret error:",
-          err.response ? err.response.data : err.message
-        );
+        console.error("FatSecret error:", err.response ? err.response.data : err.message);
         return res.status(502).json({ error: "Upstream FatSecret error" });
       }
+    }
+
+    const fatFood =
+      fatData?.food ||
+      fatData?.foods?.food ||
+      fatData?.result?.food; 
+
+    if (fatFood) {
+      return res.status(200).json({ food: fatFood, source: "fatsecret" });
     }
 
     const localProduct = await BarCodeProduct.findOne({ barcode });
@@ -348,6 +349,7 @@ app.get("/getByBarcode", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 app.get("/first-open", async (req, res) => {

@@ -352,7 +352,6 @@ bot.onText(/\/addCustome/, (msg) => {
 
           bot.sendMessage(chatId, "Введите количество углеводов на 100 грамм:");
 
-          // Ожидаем количество углеводов
           bot.once("message", async (carbsMsg) => {
             const carbs = parseFloat(carbsMsg.text);
 
@@ -363,7 +362,6 @@ bot.onText(/\/addCustome/, (msg) => {
               );
             }
 
-            // Сохраняем продукт в MongoDB
             const newProduct = addCustom(
               chatId,
               productName,
@@ -411,7 +409,6 @@ bot.onText(/\/addCustome/, (msg) => {
 //     });
 //   }
 // });
-// обработка событий при выборе продуктов из избранных
 bot.on("callback_query", async (callbackQuery) => {
   const msg = callbackQuery.message;
   const action = callbackQuery.data;
