@@ -69,7 +69,7 @@ const findAndDelete = async (userId, entryId, date) => {
 
   if (!log) throw new Error("Лог пользователя не найден");
 
-  // Определяем, в каком приёме пищи лежит продукт
+  
   let mealKey = null;
   let productToDelete = null;
 
@@ -108,9 +108,9 @@ const isFirstLogin = async (userId) => {
   const log = await User.findOne({ userId });
   if (!log) {
     
-    return true; // Это первый логин
+    return true; 
   }
-  return false; // Это не первый логин
+  return false; 
 };
 module.exports = {
   addAndUpdate,

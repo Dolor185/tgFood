@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
       carbs: Number,
       createdAt: { type: Date, default: Date.now },
     }
-  ] // ✅ новое поле
+  ]
 });
 
 const User = mongoose.model("User", userSchema);
