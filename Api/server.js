@@ -306,41 +306,47 @@ app.get("/getByBarcode", async (req, res) => {
   const barcode = String(req.query.barcode || "").trim();
   if (!barcode) return res.status(400).json({ error: "barcode is required" });
 
-  const url = "https://platform.fatsecret.com/rest/food/barcode/find-by-id/v1";
+  const fatUrl = "https://platform.fatsecret.com/rest/food/barcode/find-by-id/v1";
 
   try {
     await checkAndRefreshToken();
 
-    let fatData = null;
-
+    // 1) FatSecret
     try {
-      const apiResponse = await axios.get(url, {
+      const apiResponse = await axios.get(fatUrl, {
         params: { barcode, format: "json" },
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
         },
       });
-      fatData = apiResponse.data;
+
+      const fatData = apiResponse.data;
+
+      const fatFood =
+        fatData?.food ||
+        fatData?.foods?.food ||
+        fatData?.result?.food ||
+        null;
+
+      if (fatFood) {
+        return res.status(200).json({ food: fatFood, source: "fatsecret" });
+      }
     } catch (err) {
+      // Если не 404 — это проблема
       if (!(err.response && err.response.status === 404)) {
-        console.error("FatSecret error:", err.response ? err.response.data : err.message);
+        console.error(
+          "FatSecret error:",
+          err.response ? err.response.data : err.message
+        );
         return res.status(502).json({ error: "Upstream FatSecret error" });
       }
     }
 
-    const fatFood =
-      fatData?.food ||
-      fatData?.foods?.food ||
-      fatData?.result?.food; 
-
-    if (fatFood) {
-      return res.status(200).json({ food: fatFood, source: "fatsecret" });
-    }
-
-    const localProduct = await BarCodeProduct.findOne({ barcode });
-    if (localProduct) {
-      return res.status(200).json({ food: localProduct, source: "local" });
+    // 2) Local DB (FatSecret-like)
+    const localFood = await BarCodeProduct.findOne({ barcode }).lean();
+    if (localFood) {
+      return res.status(200).json({ food: localFood, source: "local" });
     }
 
     return res.status(404).json({ message: "Продукт не найден" });
@@ -649,21 +655,56 @@ app.delete('/delete-custom', async (req, res) => {
 }
 );
 
-app.post('/add-barcode-product', async (req, res) => {
-const {barcode, name, nutrients, metric_serving_unit} = req.body;
-try{
-  const barcodeProduct = new BarCodeProduct({
-    barcode,
-    name,
-    metric_serving_unit,
-    nutrients});
-  await barcodeProduct.save();
-  res.status(201).json({ message: "Продукт добавлен", product: barcodeProduct });
-} catch (error) {
-  console.error("Ошибка при добавлении продукта с штрихкодом:", error.message);
-  res.status(500).json({ error: "Ошибка сервера" });
-}
+app.post("/add-barcode-product", async (req, res) => {
+  try {
+    const { barcode, food_name, serving } = req.body;
+
+    if (!barcode || !food_name || !serving) {
+      return res.status(400).json({
+        error: "barcode, food_name, serving are required",
+      });
+    }
+
+    const cleanBarcode = String(barcode).trim();
+
+    const doc = {
+      barcode: cleanBarcode,
+      source: "local",
+      food_id: `local:${cleanBarcode}`,
+      food_name: String(food_name).trim(),
+      servings: {
+        serving: [
+          {
+            serving_id: "local-100",
+            serving_description:
+              serving.serving_description ||
+              `100 ${serving.metric_serving_unit || "g"}`,
+            metric_serving_amount: String(serving.metric_serving_amount || "100"),
+            metric_serving_unit: String(serving.metric_serving_unit || "g"),
+            number_of_units: String(serving.number_of_units || "0.000"),
+            calories: Number(serving.calories),
+            protein: Number(serving.protein),
+            fat: Number(serving.fat),
+            carbohydrate: Number(serving.carbohydrate),
+          },
+        ],
+      },
+    };
+
+    // ✅ upsert: если уже есть — обновим (на всякий)
+    const saved = await BarCodeProduct.findOneAndUpdate(
+      { barcode: cleanBarcode },
+      { $set: doc },
+      { new: true, upsert: true }
+    );
+
+    return res.status(201).json({ message: "Продукт сохранён", food: saved });
+  } catch (error) {
+    console.error("Ошибка при добавлении продукта с штрихкодом:", error.message);
+    return res.status(500).json({ error: "Ошибка сервера" });
+  }
 });
+
 
 const startServer = () => {
   app.listen(3000, () => {
