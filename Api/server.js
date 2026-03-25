@@ -65,13 +65,56 @@ const performResetForAllUsers = async () => {
     }
   }
 };
-app.get("/manual-reset", async (req, res) => {
+const getLocalDateKey = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+app.post("/manual-reset", async (req, res) => {
   try {
-    await performResetForAllUsers(); // твоя логика сброса
-    res.send("✅ Сброс выполнен вручную");
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const todayKey = getLocalDateKey();
+    const log = await NutrientLog.findOne({ userId, date: todayKey });
+
+    const allProducts = [
+      ...(log?.meals?.Breakfast || []),
+      ...(log?.meals?.Lunch || []),
+      ...(log?.meals?.Dinner || []),
+      ...(log?.meals?.Snacks || []),
+    ];
+
+    const entry = {
+      total: log?.totalNutrients || { calories: 0, protein: 0, fat: 0, carbs: 0 },
+      products: allProducts,
+    };
+
+    await FoodHistory.updateOne(
+      { userId },
+      { $set: { [`history.${todayKey}`]: entry } },
+      { upsert: true }
+    );
+
+    await resetTotal(userId, todayKey);
+
+    user.lastReset = new Date();
+    await user.save();
+
+    res.status(200).json({ message: "Reset done" });
   } catch (err) {
     console.error("Ошибка в /manual-reset:", err.message);
-    res.status(500).send("❌ Ошибка при сбросе");
+    res.status(500).json({ error: "Ошибка при сбросе" });
   }
 });
 app.get("/debug-reset", async (req, res) => {
@@ -577,7 +620,7 @@ catch (error) {
       const foodHistory = await FoodHistory.findOne({ userId });
   
       if (!foodHistory || !foodHistory.history) {
-        return res.status(200).json({ history: [] }); // Нет истории = пустой массив
+        return res.status(200).json({ history: [] });
       }
   
       const now = new Date();
@@ -586,12 +629,16 @@ catch (error) {
       for (let i = 0; i < 7; i++) {
         const date = new Date(now);
         date.setDate(now.getDate() - i);
-        const dateKey = date.toISOString().slice(0, 10); // например, "2024-04-24"
+        const dateKey = getLocalDateKey(date);
   
-        if (foodHistory.history.has(dateKey)) {
+        const entry = foodHistory.history.get
+          ? foodHistory.history.get(dateKey)
+          : foodHistory.history[dateKey];
+  
+        if (entry) {
           last7Days.push({
             date: dateKey,
-            ...foodHistory.history.get(dateKey), // продукты + total
+            ...entry,
           });
         }
       }
@@ -602,7 +649,6 @@ catch (error) {
       res.status(500).json({ error: "Ошибка сервера" });
     }
   });
-
   app.post('/add-custom', async (req, res) => {
     const { userId, product } = req.body;
   

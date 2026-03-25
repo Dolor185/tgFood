@@ -46,12 +46,17 @@ const addAndUpdate = async (userId, date, meal, nutrients, product) => {
 const findTotal = (userId, date) => {
   return NutrientLog.findOne({ userId, date });
 };
-const resetTotal = (userId) => {
-  return NutrientLog.updateMany(
-    { userId },
+const resetTotal = (userId, date) => {
+  return NutrientLog.updateOne(
+    { userId, date },
     {
       $set: {
-        products: [],
+        meals: {
+          Breakfast: [],
+          Lunch: [],
+          Dinner: [],
+          Snacks: [],
+        },
         totalNutrients: {
           calories: 0,
           protein: 0,
